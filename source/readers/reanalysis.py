@@ -1,15 +1,18 @@
 import xarray as xr
 import datetime as dt
 import numpy as np
+import pandas as pd
 
 import glob, os
 import re
+
+from precipitation.constants import filepath as REANALYSIS_PATH
 
 EASE_NH50KM_GRID_FILE = '/oldhome/apbarret/projects/ancillary/maps/ease_nh50km_coordinates.nc'
 
 REANALYSIS_GLOB_PSM = {'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/????/??/CFSR*.*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
                        'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/????/??/MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
-                       'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.nc4',
+                       'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.v2.nc4',
                        'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/????/??/era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
                        'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/????/??/JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
                        'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/????/??/era5.single_level.PRECIP_STATS.??????.month.Nh50km.v2.nc4'}
@@ -51,5 +54,37 @@ def read_precip_stats(reanalysis, freq='month', load=False):
     else:
         return ds
 
+def daily_filepath(reanalysis, date, grid=None):
+     """Generates filepath for daily reanalysis precipitation"""
+     dirpath = REANALYSIS_PATH[reanalysis]['path'].format('PRECTOT',date.year,date.month)
+     filename = REANALYSIS_PATH[reanalysis]['ffmt'].replace('??','').format('PRECTOT',
+                                                                            date.strftime('%Y%m%d'))
+     if grid:
+          filename=filename.replace('.nc','.Nh50km.nc')
+                             
+     return os.path.join(dirpath,filename)
+                                   
+def read_daily_precip(reanalysis, first_date, last_date, grid=None, load=False):
+     """
+     Reads a cube of daily reanalysis precip
+     
+     reanalysis - name of reanalysis
+     first_date - first date to read YYYY-MM-DD
+     last_date - last_date to read YYYY-MM-DD
 
-    
+     load - load data set
+     """
+
+     dates = pd.date_range(first_date, last_date, freq='D')
+     fileList = [daily_filepath(reanalysis, d, grid=grid) for d in dates]
+
+     ds = xr.open_mfdataset(fileList, concat_dim='time', data_vars=['PRECTOT'])
+     ds['time'] = dates
+
+     ds = ds.where(ds.latitude > -999.)
+     ds = ds.set_coords(['latitude','longitude'])
+     
+     return ds
+                                   
+     
+     
