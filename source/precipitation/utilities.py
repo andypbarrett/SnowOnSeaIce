@@ -206,9 +206,13 @@ def wetdays(da, threshold=1.):
     Returns 2D data array with lat and lon dimensions
     '''
     # Ignore cells with less than daysinmonth finite values
-    ntot = da.shape[0]
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
     nwet = da.where(da > threshold).count(dim='time')
-    return nwet.astype(float)/float(ntot)
+    fwet = nwet.astype(float)/float(nday)
+    
+    return fwet.where(mask)
 
 def wetday_max(da, threshold=1.):
     '''
@@ -270,7 +274,7 @@ def make_test_dataArray():
 
     wetday_mean = [nan, nan, 2.] with threshold=1. 
     prectot = [nan, nan, 11.5]
-    wetdays = [nan, nan, 5]
+    wetdays = [nan, nan, 0.16129]
     wetday_max = [nan, nan, 2.]
     """
     x = np.zeros(shape=(3,31))
