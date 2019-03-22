@@ -6,6 +6,9 @@ import xarray as xr
 import glob
 import os
 
+import datetime as dt
+import calendar
+
 from constants import filepath, vnamedict
 
 def _glob_precip_stats_dirpath(reanalysis):
@@ -148,9 +151,17 @@ def read_month(fileGlob, reanalysis, variable):
         # To deal with ERA5 variable name - this needs to be fixed in processing 6h files
         if (reanalysis == 'ERA5'):
             ds.rename({'tp': 'TOTPREC'}, inplace=True)
-            
-        ds[vname['name']] = ds[vname['name']] * vname['scale'] # Scale to mm and change units
 
+        # A quick fix to deal with EASE grids and NaNs
+        if 'Nh50km' in fileList[0]:
+            ds[vname['name']] = ds[vname['name']].where(ds.latitude > -999.) # Set off-grid cells to NaN
+        
+        if vname['scale'] != 1.:
+            attrs = ds[vname['name']].attrs
+            ds[vname['name']] = ds[vname['name']] * vname['scale'] # Scale to mm and change units
+            attrs['units'] = 'mm'
+            ds[vname['name']].attrs = attrs
+        
         ds.set_coords(['latitude','longitude'], inplace=True)
         
         if 'time' not in ds.coords.keys(): ds.coords['time'] = make_time_coordinate(fileGlob)
@@ -160,11 +171,12 @@ def read_month(fileGlob, reanalysis, variable):
     return ds
 
 def apply_threshold(da, threshold=1.):
-    return xr.DataArray(np.where(da.values > 1., da.values, 0.),
-                        coords=da.coords,
-                        dims=da.dims,
-                        name=da.name,
-                        attrs=da.attrs)
+    #return xr.DataArray(np.where(da.values > threshold, da.values, 0.),
+    #                    coords=da.coords,
+    #                    dims=da.dims,
+    #                    name=da.name,
+    #                    attrs=da.attrs)
+    return da.where(da > threshold, 0.)
     
 def wetday_mean(da, threshold=1.):
     '''
@@ -190,6 +202,7 @@ def wetdays(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
+    # Ignore cells with less than daysinmonth finite values
     ntot = da.shape[0]
     nwet = da.where(da > threshold).count(dim='time')
     return nwet.astype(float)/float(ntot)
@@ -205,6 +218,7 @@ def wetday_max(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
+    # Add code to ignore time less than daysinmonth
     return da.max(dim='time')
 
 def wetday_total(da, threshold=1.):
@@ -218,12 +232,27 @@ def wetday_total(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
+
+    # Add skipna or min_count
     return apply_threshold(da, threshold=threshold).sum(dim='time')
 
 def all_total(da):
-    return da.sum(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    return da.sum(dim='time', min_count=nday, keep_attrs=True)
 
+def daysinmonth(dt64):
+    """Returns numbers of days in a month for a given datetime object
 
+    date - numpy datetime64 (from xarray time)
+    """
+    date = to_datetime(dt64)
+    return calendar.monthrange(date.year, date.month)[1]
+
+def to_datetime(dt64):
+    """Convert numpy datetime64 object to datetime"""
+    ns = 1e-9
+    return dt.datetime.utcfromtimestamp(dt64.astype(int)*ns)
+    
 def arbitSum(ds, dateStart, dateEnd):
     sub = ds.sel(time=slice(dateStart,dateEnd))
     nt = sub.time.size
