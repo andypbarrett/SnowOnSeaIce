@@ -3,6 +3,7 @@
 
 import numpy as np
 import xarray as xr
+import pandas as pd
 import glob
 import os
 
@@ -171,8 +172,8 @@ def read_month(fileGlob, reanalysis, variable):
     return ds
 
 def apply_threshold(da, threshold=1.):
-    """Set values < threshold to 0"""
-    return xr.where(da < threshold, 0., da)
+    """Set values < threshold to 0.  NaNs stay as NaNs"""
+    return xr.where(da < threshold, np.nan, da)
     
 def wetday_mean(da, threshold=1.):
     '''
@@ -185,7 +186,13 @@ def wetday_mean(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    return apply_threshold(da, threshold=threshold).mean(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    result = apply_threshold(da, threshold=threshold).mean(dim='time')
+
+    return result.where(mask)
+
 
 def wetdays(da, threshold=1.):
     '''
@@ -257,7 +264,23 @@ def arbitSum(ds, dateStart, dateEnd):
     result = result.expand_dims('time', axis=0)
     result.coords['time'] = sub['time'][it]
     return result
-    
+
+def make_test_dataArray():
+    """Returns a 3 cell x 31 time DataArray with random uniform and NaN values
+
+    wetday_mean = [nan, nan, 2.] with threshold=1. 
+    prectot = [nan, nan, 11.5]
+    wetdays = [nan, nan, 5]
+    wetday_max = [nan, nan, 2.]
+    """
+    x = np.zeros(shape=(3,31))
+    x[0,:] = np.nan
+    x[1,[1,2,3,4,5,6,15,23,24,25]] = [np.nan,np.nan,0.1,0.5,2.,2.,2.,2.,0.9,2.]
+    x[2,[3,4,5,6,15,23,24,25]] = [0.1,0.5,2.,2.,2.,2.,0.9,2.]
+    da = xr.DataArray(x, dims=['x','time'])
+    da.coords['time'] = pd.date_range('19790101', freq='D', periods=31)
+    return da
+
 
 
 
