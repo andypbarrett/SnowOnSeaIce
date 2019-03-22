@@ -171,12 +171,8 @@ def read_month(fileGlob, reanalysis, variable):
     return ds
 
 def apply_threshold(da, threshold=1.):
-    #return xr.DataArray(np.where(da.values > threshold, da.values, 0.),
-    #                    coords=da.coords,
-    #                    dims=da.dims,
-    #                    name=da.name,
-    #                    attrs=da.attrs)
-    return da.where(da > threshold, 0.)
+    """Set values < threshold to 0"""
+    return xr.where(da < threshold, 0., da)
     
 def wetday_mean(da, threshold=1.):
     '''
