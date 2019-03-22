@@ -234,7 +234,8 @@ def wetday_max(da, threshold=1.):
 
 def wetday_total(da, threshold=1.):
     '''
-    Returns total precipitation rate for wet days.  This is not the same as the sum all precipitation.
+    Returns total precipitation rate for wet days.  This is not the same as the sum 
+    all precipitation.
 
     wetdays are defined as days with rain rate greater than a threshold (default = 1. mm/day)
 
@@ -243,9 +244,12 @@ def wetday_total(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
-    # Add skipna or min_count
-    return apply_threshold(da, threshold=threshold).sum(dim='time')
+    result = apply_threshold(da, threshold=threshold).sum(dim='time')
+    
+    return result.where(mask) 
 
 def all_total(da):
     nday = daysinmonth(da.time.values[0])
