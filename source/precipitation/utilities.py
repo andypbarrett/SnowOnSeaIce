@@ -205,7 +205,6 @@ def wetdays(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    # Ignore cells with less than daysinmonth finite values
     nday = daysinmonth(da.time.values[0])
     mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
@@ -213,6 +212,7 @@ def wetdays(da, threshold=1.):
     fwet = nwet.astype(float)/float(nday)
     
     return fwet.where(mask)
+
 
 def wetday_max(da, threshold=1.):
     '''
@@ -225,8 +225,12 @@ def wetday_max(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    # Add code to ignore time less than daysinmonth
-    return da.max(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    result = da.max(dim='time')
+    return result.where(mask)
+
 
 def wetday_total(da, threshold=1.):
     '''
