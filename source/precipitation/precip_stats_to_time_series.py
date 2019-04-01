@@ -24,7 +24,7 @@ fili = {'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/CFSR.flxf06.gdas.PRECIP
 
 maskFile = '/home/apbarret/src/utilities/data/arctic_mask.ocean.Nh50km.nc'
 
-def precip_stats_to_climatology(reanalysis):
+def precip_stats_to_time_series(reanalysis):
 
     ds = xr.open_dataset(fili[reanalysis])
     mask = xr.open_dataset(maskFile)
@@ -55,5 +55,5 @@ if __name__ == "__main__":
     parser.add_argument('reanalysis', type=str, help='Reanalysis to process')
     args = parser.parse_args()
 
-    precip_stats_to_climatology(args.reanalysis)
+    precip_stats_to_time_series(args.reanalysis)
     
