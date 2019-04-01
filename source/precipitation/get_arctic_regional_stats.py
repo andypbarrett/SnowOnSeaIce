@@ -134,7 +134,7 @@ def get_arctic_regional_stats(verbose=False):
         'ERA5',
     ]
 
-    for reanalysis in products[:3]:
+    for reanalysis in products[3:]:
         
         if verbose: print ('Getting stats for '+reanalysis)
         df = arctic_regional_precip_stats(reanalysis, verbose=verbose)
