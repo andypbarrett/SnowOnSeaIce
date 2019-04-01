@@ -96,25 +96,6 @@ def read_precip_stats(reanalysis):
     
     return ds.sortby(ds.time)
 
-def read_region_mask():
-    """
-    Reads the Nh50km Arctic region mask and puts it into a xarray DataArray compatable with
-    the precip_stats Dataset
-    """
-
-    mask_path = ('/oldhome/apbarret/data/seaice_indices/'
-                 'Arctic_region_mask_Meier_AnnGlaciol2007_Nh50km.dat')
-    nrow = 360
-    ncol = 360
-    
-    result = xr.DataArray(np.fromfile(mask_path, dtype=float).reshape(nrow,ncol),
-                          dims=['x','y'])
-    return result
-
-def _get_region_stats(ds, mask, region_name):
-    agg = ds.where(mask == region[region_name]).mean(dim=['x','y'])
-    return agg #.drop(['latitude','longitude'])
-
 def arctic_regional_precip_stats(reanalysis, verbose=False):
     """
     Calculates regional precip stats for a reanalysis
@@ -124,12 +105,12 @@ def arctic_regional_precip_stats(reanalysis, verbose=False):
     ds = read_precip_stats(reanalysis)
 
     if verbose: print ('   Getting mask...')
-    mask = read_region_mask()
+    mask = util.read_region_mask()
 
     by_region = []
     for key in region.keys():
         if verbose: print ('   Getting regional stats for '+key+'...')
-        by_region.append( _get_region_stats(ds, mask, key).to_dataframe() )
+        by_region.append( util.region_stats(ds, mask, key).to_dataframe() )
 
     ds.close()
     
@@ -140,13 +121,6 @@ def arctic_regional_precip_stats(reanalysis, verbose=False):
     
     return df 
 
-def read_arctic_regional_stats(filepath):
-    """
-    Reads a summary file of Arctic regional stats into a multi-level pandas data frame
-    """
-    return pd.read_csv(filepath, header=[0,1], index_col=0,
-                       infer_datetime_format=True, parse_dates=True)
-    
 def get_arctic_regional_stats(verbose=False):
     """
     Calculates stats for all reanalyses
@@ -164,7 +138,7 @@ def get_arctic_regional_stats(verbose=False):
         
         if verbose: print ('Getting stats for '+reanalysis)
         df = arctic_regional_precip_stats(reanalysis, verbose=verbose)
-
+    
         outfile = '{:s}_regional_stats.csv'.format(reanalysis.lower())
         if verbose: print ('   Writing to '+outfile)
         df.to_csv(outfile)
