@@ -43,6 +43,21 @@ vnamedict = {
                       'PRECIP_STATS': {'name': 'PRECIP_STATS', 'scale': 1.},
                       },
             }
-#             'MERRA2': {},
-#             'CFSR2': {},
-#             'MERRA': {}}
+
+# Names and codes for Walt Meier's Arctic region mask
+region = {
+    'CENTRAL_ARCTIC': 15,
+    'BEAUFORT':       13,
+    'CHUKCHI':        12,
+    'BARENTS':         8,
+    'KARA':            9,
+    'LAPTEV':         10,
+    'EAST_SIBERIAN':  11,
+    'GREENLAND':       7,
+    'BAFFIN':          6,
+    'CAA':            14,
+    'BERING':          3,
+    'OKHOTSK':         2,
+    'HUDSON_BAY':      4,
+         }
+
