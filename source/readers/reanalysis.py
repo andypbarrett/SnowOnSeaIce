@@ -63,7 +63,21 @@ def daily_filepath(reanalysis, date, grid=None):
           filename=filename.replace('.nc','.Nh50km.nc')
                              
      return os.path.join(dirpath,filename)
-                                   
+
+def read_netcdfs(paths, dim):
+     """
+     Based on code from:
+     http://xarray.pydata.org/en/stable/io.html#combining-multiple-files
+     """
+     def process_one_path(path):
+          with xr.open_dataset(path) as ds:
+               ds.load()
+          return ds
+
+     #paths = sorted( glob.glob(files) )
+     combined = xr.concat( [process_one_path(p) for p in paths], dim )
+     return combined
+     
 def read_daily_precip(reanalysis, first_date, last_date, grid=None, load=False):
      """
      Reads a cube of daily reanalysis precip
@@ -78,11 +92,16 @@ def read_daily_precip(reanalysis, first_date, last_date, grid=None, load=False):
      dates = pd.date_range(first_date, last_date, freq='D')
      fileList = [daily_filepath(reanalysis, d, grid=grid) for d in dates]
 
-     ds = xr.open_mfdataset(fileList, concat_dim='time', data_vars=['PRECTOT'])
+     #ds = xr.open_mfdataset(fileList, concat_dim='time', data_vars=['PRECTOT'])
+     ds = read_netcdfs( fileList, 'time')
      ds['time'] = dates
 
-     ds = ds.where(ds.latitude > -999.)
-     ds = ds.set_coords(['latitude','longitude'])
+     if grid:
+          ds.coords['x'] = np.arange(0,ds.dims['x'])
+          ds.coords['y'] = np.arange(0,ds.dims['y'])
+     
+          ds = ds.where(ds.latitude > -999.)
+          ds = ds.set_coords(['latitude','longitude'])
      
      return ds
                                    
