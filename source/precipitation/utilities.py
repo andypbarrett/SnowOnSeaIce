@@ -173,7 +173,10 @@ def read_month(fileGlob, reanalysis, variable):
 
 def apply_threshold(da, threshold=1.):
     """Set values < threshold to 0.  NaNs stay as NaNs"""
-    return xr.where(da < threshold, np.nan, da)
+    with np.errstate(all='ignore'):
+        result = xr.where(da < threshold, np.nan, da)
+    result.attrs = da.attrs
+    return result
     
 def wetday_mean(da, threshold=1.):
     '''
@@ -189,8 +192,9 @@ def wetday_mean(da, threshold=1.):
     nday = daysinmonth(da.time.values[0])
     mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
-    result = apply_threshold(da, threshold=threshold).mean(dim='time')
-
+    result = apply_threshold(da, threshold=threshold).mean(dim='time', keep_attrs=True)
+    result = xr.where(mask & xr.ufuncs.isnan(result), 0., result)
+    
     return result.where(mask)
 
 
@@ -208,8 +212,11 @@ def wetdays(da, threshold=1.):
     nday = daysinmonth(da.time.values[0])
     mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
-    nwet = da.where(da > threshold).count(dim='time')
+    nwet = da.where(da > threshold).count(dim='time', keep_attrs=True)
+    
     fwet = nwet.astype(float)/float(nday)
+    fwet.attrs = nwet.attrs
+    fwet.attrs['units'] = 'none'
     
     return fwet.where(mask)
 
@@ -228,7 +235,7 @@ def wetday_max(da, threshold=1.):
     nday = daysinmonth(da.time.values[0])
     mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
-    result = da.max(dim='time')
+    result = da.max(dim='time', keep_attrs=True)
     return result.where(mask)
 
 
@@ -247,7 +254,7 @@ def wetday_total(da, threshold=1.):
     nday = daysinmonth(da.time.values[0])
     mask = da.count(dim='time') == nday  # Mask cells with less than nday
 
-    result = apply_threshold(da, threshold=threshold).sum(dim='time')
+    result = apply_threshold(da, threshold=threshold).sum(dim='time', keep_attrs=True)
     
     return result.where(mask) 
 
