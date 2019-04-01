@@ -5,17 +5,21 @@ def precip_stats_to_climatology(fili, start_year=1981, end_year=2015):
     Calculates average climatology for annual data - either Jan to Dec or accummulation period
     """
 
+    nyear = end_year - start_year + 1
+    
     ds = xr.open_dataset(fili)
 
-    year = ds['time'].dt.year 
-    dsClm = ds.isel( time=( (year >= start_year) & (year <= end_year) ) ).mean(dim='time')
+    year = ds['time'].dt.year
+    #dsMsk = ds.isel( time=( (year >= start_year) & (year <= end_year) ) ).count(dim='time')
+    dsClm = ds.isel( time=( (year >= start_year) & (year <= end_year) ) ).mean(dim='time', skipna=False)
+    #dsClm = dsClm.where(dsMsk == nyear)
+    
+    #dsMsk.to_netcdf('era5.count.nc4')
 
     print (dsClm)
-
+    
     filo = fili.replace('annual','annual.clm')
-    print (filo)
-    return
-
+    print (f'Writing climatology to {filo}') 
     dsClm.to_netcdf(filo)
 
     return
