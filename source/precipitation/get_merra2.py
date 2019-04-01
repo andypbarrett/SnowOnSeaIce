@@ -3,6 +3,8 @@
 import merra2_utilities as m2util
 import datetime as dt
 
+MERRA2_DIR = '/projects/arctic_scientist_data/Reanalysis/MERRA2/hourly'
+
 def get_dataset_old(url):
 
     from pydap.client import open_url                                  
@@ -61,7 +63,7 @@ def hour2day(daHr):
     
     return daDay
 
-def make_output_path(url, varName, root_diro='/disks/arctic5_raid/abarrett/MERRA2/daily'):
+def make_output_path(url, varName, root_diro=MERRA2_DIR):
     '''Generates a path for the output netCDF4 file'''
     import os
     import datetime as dt
