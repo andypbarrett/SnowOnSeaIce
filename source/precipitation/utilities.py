@@ -10,7 +10,7 @@ import os
 import datetime as dt
 import calendar
 
-from constants import filepath, vnamedict
+from constants import filepath, vnamedict, region
 
 def _glob_precip_stats_dirpath(reanalysis):
     """
@@ -301,6 +301,41 @@ def make_test_dataArray():
     return da
 
 
+def read_region_mask():
+    """
+    Reads the Nh50km Arctic region mask and puts it into a xarray DataArray compatable with
+    the precip_stats Dataset
+    """
+
+    mask_path = ('/oldhome/apbarret/data/seaice_indices/'
+                 'Arctic_region_mask_Meier_AnnGlaciol2007_Nh50km.dat')
+    nrow = 360
+    ncol = 360
+    
+    result = xr.DataArray(np.fromfile(mask_path, dtype=float).reshape(nrow,ncol),
+                          dims=['x','y'])
+    return result
+
+
+def region_stats(ds, mask, region_name):
+    """
+    Extracts stats for a given region from an EASE grid data set
+    """
+    agg = ds.where(mask == region[region_name]).mean(dim=['x','y'])
+    if 'latitude' in agg:
+        agg = agg.drop('latitude')
+    if 'longitude' in agg:
+        agg = agg.drop('longitude')
+    return agg
+
+
+def read_arctic_regional_stats(filepath):
+    """
+    Reads a summary file of Arctic regional stats into a multi-level pandas data frame
+    """
+    return pd.read_csv(filepath, header=[0,1], index_col=0,
+                       infer_datetime_format=True, parse_dates=True)
+    
 
 
 
