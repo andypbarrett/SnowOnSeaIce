@@ -29,23 +29,50 @@ def globFiles(reanalysis):
     """
 
     globPath = {
-                'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/'
-                        '????/??/era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
-                'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/'
-                        '????/??/CFSR*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
-                'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/'
-                         '????/??/MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
-                'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/'
-                          '????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.nc4',
-                'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/'
-                         '????/??/JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
+        'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/'
+                '????/??/era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
+        'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/'
+                '????/??/CFSR*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
+        'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/'
+                 '????/??/MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
+        'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/'
+                  '????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.v2.nc4',
+        'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/'
+                 '????/??/JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
+        'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/'
+                '????/??/era5.single_level.PRECIP_STATS.??????.month.Nh50km.nc4'
                }
 
     fileList = glob.glob(globPath[reanalysis])
 
-    #time = [util.date_from_filename(f) for f in fileList]
-    
     return fileList 
+
+def read_precip_stats_mf(reanalysis):
+    """
+    Reads monthly precip_stats files into a big data cube for a given reanalysis.
+
+    This method avoids open_mfdataset because it runs into a Too Many files open issue
+
+    NB I use sortby to ensure that data are returned in time order.
+
+    Returns: a xarray dataset
+    """
+
+    def read_one_file(path):
+        "Reads a single file using a context manager to ensure file gets closed"
+        with xr.open_dataset(path) as ds:
+            ds.load()
+            return ds
+        
+    fileList = globFiles(reanalysis)
+    date = [util.date_from_filename(f) for f in fileList]
+
+    datasets = [read_one_file(f) for f in fileList]
+    combined = xr.concat(datasets, 'time')
+    combined.coords['time'] = date
+    combined.sortby(combined.time)
+    
+    return combined
 
 def read_precip_stats(reanalysis):
     """
@@ -56,13 +83,16 @@ def read_precip_stats(reanalysis):
     Returns: a xarray dataset
     """
     fileList = globFiles(reanalysis)
+    date = [util.date_from_filename(f) for f in fileList]
+    
     ds = xr.open_mfdataset(fileList, concat_dim='time',
                            data_vars=['wetday_mean',
                                       'wetday_frequency',
                                       'wetday_total',
                                       'wetday_max',
                                       'prectot',])
-    ds.coords['time'] = [util.date_from_filename(f) for f in fileList]
+    ds.load()
+    ds.coords['time'] = date
     
     return ds.sortby(ds.time)
 
@@ -83,7 +113,7 @@ def read_region_mask():
 
 def _get_region_stats(ds, mask, region_name):
     agg = ds.where(mask == region[region_name]).mean(dim=['x','y'])
-    return agg.drop(['latitude','longitude'])
+    return agg #.drop(['latitude','longitude'])
 
 def arctic_regional_precip_stats(reanalysis, verbose=False):
     """
@@ -122,14 +152,15 @@ def get_arctic_regional_stats(verbose=False):
     Calculates stats for all reanalyses
     """
     products = [
-                'ERAI',
-                'CFSR',
-                'MERRA',
-                'MERRA2',
-                'JRA55',
-                ]
+        'ERAI',
+        'CFSR',
+        'MERRA',
+        'MERRA2',
+        'JRA55',
+        'ERA5',
+    ]
 
-    for reanalysis in products[3:]:
+    for reanalysis in products[:3]:
         
         if verbose: print ('Getting stats for '+reanalysis)
         df = arctic_regional_precip_stats(reanalysis, verbose=verbose)
