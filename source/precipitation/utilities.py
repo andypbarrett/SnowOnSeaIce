@@ -10,7 +10,7 @@ import os
 import datetime as dt
 import calendar
 
-from constants import filepath, vnamedict, region
+from constants import filepath, vnamedict, arctic_mask_region, annual_accumulation_filepath
 
 def _glob_precip_stats_dirpath(reanalysis):
     """
@@ -321,7 +321,7 @@ def region_stats(ds, mask, region_name):
     """
     Extracts stats for a given region from an EASE grid data set
     """
-    agg = ds.where(mask == region[region_name]).mean(dim=['x','y'])
+    agg = ds.where(mask == arctic_mask_region[region_name]).mean(dim=['x','y'])
     if 'latitude' in agg:
         agg = agg.drop('latitude')
     if 'longitude' in agg:
@@ -335,8 +335,28 @@ def read_arctic_regional_stats(filepath):
     """
     return pd.read_csv(filepath, header=[0,1], index_col=0,
                        infer_datetime_format=True, parse_dates=True)
-    
 
+
+def load_annual_accumulation(reanalysis):
+    """Loads annual accumulation period fields
+
+    Returns: an xarray dataset
+    """
+    ds = xr.open_dataset(annual_accumulation_filepath[reanalysis])
+
+    # Modify coordinate names to match other files
+    # This will be fixed in a later version
+    if reanalysis == 'CFSR':
+        ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
+
+    # Scale totals and averages
+    if reanalysis == 'JRA55':
+        ds['precTot'] = ds['precTot']*0.1
+        ds['wetdayTot'] = ds['wetdayTot']*0.1
+        ds['wetdayAve'] = ds['wetdayAve']*0.1
+        
+    return ds
+    
 
 
     
