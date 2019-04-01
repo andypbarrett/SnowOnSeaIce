@@ -4,7 +4,7 @@ import utilities as util
 import datetime as dt
 import numpy as np
 
-np.errstate(all='ignore') # to deal with Runtime warning about NaNs
+np.seterr(all='ignore') # to deal with Runtime warning about NaNs
 
 def get_precip_statistics(fileGlob, reanalysis, threshold=1.):
     '''
@@ -25,7 +25,7 @@ def get_precip_statistics(fileGlob, reanalysis, threshold=1.):
     
     try:
         ds = util.read_month(fileGlob, reanalysis, 'PRECIP')
-    except:
+    except IOError:
         print ( '% get_precip_statistics: Unable to open {}'.format(fileGlob) )
         raise
         
@@ -36,10 +36,10 @@ def get_precip_statistics(fileGlob, reanalysis, threshold=1.):
     prectot = util.all_total(ds[varName])
 
     dsOut = xr.Dataset({'wetday_mean': wd_mean,
-                     'wetday_frequency': wd_freq,
-                     'wetday_total': wd_total,
-                     'wetday_max': wd_max,
-                     'prectot': prectot})
+                        'wetday_frequency': wd_freq,
+                        'wetday_total': wd_total,
+                        'wetday_max': wd_max,
+                        'prectot': prectot})
     if 'latitude' in ds: dsOut['latitude'] = ds['latitude']
     if 'longitude' in ds: dsOut['longitude'] = ds['longitude']
     
@@ -64,14 +64,18 @@ def process_daily_precip(reanalysis, variable, start_date=None, end_date=None,
 
         try:
             ds = get_precip_statistics(f, reanalysis, threshold=threshold)
-        except:
-            pass # Not a good way to do this
-
-        filo = util.make_outfile(f, reanalysis, variable, version='2')
-        if verbose:
-            print ( '    Writing statistics to {}'.format(filo) )
-        ds.to_netcdf(filo)
-    
+        except IOError:
+            print ('get_precip_statistics: could not read {:s}'.format(f))
+        else:
+            filo = util.make_outfile(f, reanalysis, variable)
+            if verbose:
+                print ( '    Writing statistics to {}'.format(filo) )
+                ds.to_netcdf(filo, encoding={'wetday_mean': {'zlib': True, '_FillValue': -999.},
+                                             'wetday_frequency': {'zlib': True, '_FillValue': -999.},
+                                             'wetday_total': {'zlib': True, '_FillValue': -999.},
+                                             'wetday_max': {'zlib': True, '_FillValue': -999.},
+                                             'prectot': {'zlib': True, '_FillValue': -999.},})
+                
     return
 
 if __name__ == "__main__":

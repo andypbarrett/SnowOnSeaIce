@@ -34,3 +34,20 @@ def sum6htoDay(da):
     """
     return da.resample(time='24H', base=6, keep_attrs=True).apply(daySum)
     
+def area_wgt_average(ds, latwgt, lonwgt):
+    """
+    Calculates a weighted average over x and y (lon and lat) dimensions
+
+    Arguments
+    ---------
+    ds - xarray Dataset or DataArray
+    latwgt - weights for the latitude dimension
+    lonwgt - weights for the longitude dimension
+
+    Returns a Dataset or DataArray averaged over the lat and lon dimensions
+    """
+
+    wgt = latwgt * lonwgt
+    wgt = wgt / wgt.sum()
+
+    return (ds*wgt).sum(dim=['lat','lon'])

@@ -20,11 +20,11 @@ fili = {'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/CFSR.flxf06.gdas.PRECIP
         'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/JRA55.fcst_phy2m.PRECIP_STATS.accumulation.annual.Nh50km.nc',
         'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.accumulation.annual.Nh50km.nc4',
         'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.accumulation.annual.Nh50km.nc4',
-        'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/era5.single_level.PRECIP_STATS.accumulation.annual.nc4'}
+        'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/era5.single_level.PRECIP_STATS.accumulation.annual.Nh50km.nc4'}
 
 maskFile = '/home/apbarret/src/utilities/data/arctic_mask.ocean.Nh50km.nc'
 
-def precip_stats_to_climatology(reanalysis):
+def precip_stats_to_time_series(reanalysis):
 
     ds = xr.open_dataset(fili[reanalysis])
     mask = xr.open_dataset(maskFile)
@@ -55,5 +55,5 @@ if __name__ == "__main__":
     parser.add_argument('reanalysis', type=str, help='Reanalysis to process')
     args = parser.parse_args()
 
-    precip_stats_to_climatology(args.reanalysis)
+    precip_stats_to_time_series(args.reanalysis)
     

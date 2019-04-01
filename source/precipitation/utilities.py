@@ -3,10 +3,14 @@
 
 import numpy as np
 import xarray as xr
+import pandas as pd
 import glob
 import os
 
-from constants import filepath, vnamedict
+import datetime as dt
+import calendar
+
+from constants import filepath, vnamedict, arctic_mask_region, annual_accumulation_filepath
 
 def _glob_precip_stats_dirpath(reanalysis):
     """
@@ -148,9 +152,17 @@ def read_month(fileGlob, reanalysis, variable):
         # To deal with ERA5 variable name - this needs to be fixed in processing 6h files
         if (reanalysis == 'ERA5'):
             ds.rename({'tp': 'TOTPREC'}, inplace=True)
-            
-        ds[vname['name']] = ds[vname['name']] * vname['scale'] # Scale to mm and change units
 
+        # A quick fix to deal with EASE grids and NaNs
+        if 'Nh50km' in fileList[0]:
+            ds[vname['name']] = ds[vname['name']].where(ds.latitude > -999.) # Set off-grid cells to NaN
+        
+        if vname['scale'] != 1.:
+            attrs = ds[vname['name']].attrs
+            ds[vname['name']] = ds[vname['name']] * vname['scale'] # Scale to mm and change units
+            attrs['units'] = 'mm'
+            ds[vname['name']].attrs = attrs
+        
         ds.set_coords(['latitude','longitude'], inplace=True)
         
         if 'time' not in ds.coords.keys(): ds.coords['time'] = make_time_coordinate(fileGlob)
@@ -160,11 +172,11 @@ def read_month(fileGlob, reanalysis, variable):
     return ds
 
 def apply_threshold(da, threshold=1.):
-    return xr.DataArray(np.where(da.values > 1., da.values, 0.),
-                        coords=da.coords,
-                        dims=da.dims,
-                        name=da.name,
-                        attrs=da.attrs)
+    """Set values < threshold to 0.  NaNs stay as NaNs"""
+    with np.errstate(all='ignore'):
+        result = xr.where(da < threshold, np.nan, da)
+    result.attrs = da.attrs
+    return result
     
 def wetday_mean(da, threshold=1.):
     '''
@@ -177,7 +189,14 @@ def wetday_mean(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    return apply_threshold(da, threshold=threshold).mean(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    result = apply_threshold(da, threshold=threshold).mean(dim='time', keep_attrs=True)
+    result = xr.where(mask & xr.ufuncs.isnan(result), 0., result)
+    
+    return result.where(mask)
+
 
 def wetdays(da, threshold=1.):
     '''
@@ -190,9 +209,17 @@ def wetdays(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    ntot = da.shape[0]
-    nwet = da.where(da > threshold).count(dim='time')
-    return nwet.astype(float)/float(ntot)
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    nwet = da.where(da > threshold).count(dim='time', keep_attrs=True)
+    
+    fwet = nwet.astype(float)/float(nday)
+    fwet.attrs = nwet.attrs
+    fwet.attrs['units'] = 'none'
+    
+    return fwet.where(mask)
+
 
 def wetday_max(da, threshold=1.):
     '''
@@ -205,11 +232,17 @@ def wetday_max(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    return da.max(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    result = da.max(dim='time', keep_attrs=True)
+    return result.where(mask)
+
 
 def wetday_total(da, threshold=1.):
     '''
-    Returns total precipitation rate for wet days.  This is not the same as the sum all precipitation.
+    Returns total precipitation rate for wet days.  This is not the same as the sum 
+    all precipitation.
 
     wetdays are defined as days with rain rate greater than a threshold (default = 1. mm/day)
 
@@ -218,12 +251,30 @@ def wetday_total(da, threshold=1.):
     
     Returns 2D data array with lat and lon dimensions
     '''
-    return apply_threshold(da, threshold=threshold).sum(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    mask = da.count(dim='time') == nday  # Mask cells with less than nday
+
+    result = apply_threshold(da, threshold=threshold).sum(dim='time', keep_attrs=True)
+    
+    return result.where(mask) 
 
 def all_total(da):
-    return da.sum(dim='time')
+    nday = daysinmonth(da.time.values[0])
+    return da.sum(dim='time', min_count=nday, keep_attrs=True)
 
+def daysinmonth(dt64):
+    """Returns numbers of days in a month for a given datetime object
 
+    date - numpy datetime64 (from xarray time)
+    """
+    date = to_datetime(dt64)
+    return calendar.monthrange(date.year, date.month)[1]
+
+def to_datetime(dt64):
+    """Convert numpy datetime64 object to datetime"""
+    ns = 1e-9
+    return dt.datetime.utcfromtimestamp(dt64.astype(int)*ns)
+    
 def arbitSum(ds, dateStart, dateEnd):
     sub = ds.sel(time=slice(dateStart,dateEnd))
     nt = sub.time.size
@@ -232,9 +283,80 @@ def arbitSum(ds, dateStart, dateEnd):
     result = result.expand_dims('time', axis=0)
     result.coords['time'] = sub['time'][it]
     return result
+
+def make_test_dataArray():
+    """Returns a 3 cell x 31 time DataArray with random uniform and NaN values
+
+    wetday_mean = [nan, nan, 2.] with threshold=1. 
+    prectot = [nan, nan, 11.5]
+    wetdays = [nan, nan, 0.16129]
+    wetday_max = [nan, nan, 2.]
+    """
+    x = np.zeros(shape=(3,31))
+    x[0,:] = np.nan
+    x[1,[1,2,3,4,5,6,15,23,24,25]] = [np.nan,np.nan,0.1,0.5,2.,2.,2.,2.,0.9,2.]
+    x[2,[3,4,5,6,15,23,24,25]] = [0.1,0.5,2.,2.,2.,2.,0.9,2.]
+    da = xr.DataArray(x, dims=['x','time'])
+    da.coords['time'] = pd.date_range('19790101', freq='D', periods=31)
+    return da
+
+
+def read_region_mask():
+    """
+    Reads the Nh50km Arctic region mask and puts it into a xarray DataArray compatable with
+    the precip_stats Dataset
+    """
+
+    mask_path = ('/oldhome/apbarret/data/seaice_indices/'
+                 'Arctic_region_mask_Meier_AnnGlaciol2007_Nh50km.dat')
+    nrow = 360
+    ncol = 360
     
+    result = xr.DataArray(np.fromfile(mask_path, dtype=float).reshape(nrow,ncol),
+                          dims=['x','y'])
+    return result
 
 
+def region_stats(ds, mask, region_name):
+    """
+    Extracts stats for a given region from an EASE grid data set
+    """
+    agg = ds.where(mask == arctic_mask_region[region_name]).mean(dim=['x','y'])
+    if 'latitude' in agg:
+        agg = agg.drop('latitude')
+    if 'longitude' in agg:
+        agg = agg.drop('longitude')
+    return agg
+
+
+def read_arctic_regional_stats(filepath):
+    """
+    Reads a summary file of Arctic regional stats into a multi-level pandas data frame
+    """
+    return pd.read_csv(filepath, header=[0,1], index_col=0,
+                       infer_datetime_format=True, parse_dates=True)
+
+
+def load_annual_accumulation(reanalysis):
+    """Loads annual accumulation period fields
+
+    Returns: an xarray dataset
+    """
+    ds = xr.open_dataset(annual_accumulation_filepath[reanalysis])
+
+    # Modify coordinate names to match other files
+    # This will be fixed in a later version
+    if reanalysis == 'CFSR':
+        ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
+
+    # Scale totals and averages
+    if reanalysis == 'JRA55':
+        ds['precTot'] = ds['precTot']*0.1
+        ds['wetdayTot'] = ds['wetdayTot']*0.1
+        ds['wetdayAve'] = ds['wetdayAve']*0.1
+        
+    return ds
+    
 
 
     

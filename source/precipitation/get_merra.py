@@ -84,7 +84,7 @@ def write_to_netcdf4(var, filo):
 			#	      'lat': {'_FillValue': 9.96909968386869e+36}, 
 			#	      'lon': {'_FillValue': 9.96909968386869e+36}})
     except:
-        print '%write_to_netcdf4: Cannot create {}'.format(filo)
+        print ('%write_to_netcdf4: Cannot create {}'.format(filo))
         
     return
 
@@ -200,24 +200,24 @@ def main(listFile, varList, verbose=False, overwrite=False, start_date=None, end
     for url in urlList:
 
         # Get openDAP dataset
-        if verbose: print '% Getting {}'.format(url)
+        if verbose: print ('% Getting {}'.format(url))
         dataset = get_dataset(url)
 
         # Loop through variables
         for varName in varList:
             
-            if verbose: print '   Extracting daily {} from dataset...'.format(varName)
+            if verbose: print ('   Extracting daily {} from dataset...'.format(varName))
             var = get_var(dataset, varName)
 
             if any([varName == ii for ii in ['PRECTOT', 'PRECSNO']]):
-                if verbose: print '   Integrating hourly values to daily totals'
+                if verbose: print ('   Integrating hourly values to daily totals')
                 varDay = hour2dayTot(var)
             else:
-                if verbose: print '   Averaging hourly values to daily means'
+                if verbose: print ('   Averaging hourly values to daily means')
                 varDay = hour2dayAvg(var)
             
             filo = make_output_path(url, varName)
-            if verbose: print '   Writing {} to {}'.format(varName,filo)
+            if verbose: print ('   Writing {} to {}'.format(varName,filo))
             write_to_netcdf4(varDay, filo)
 
         #dataset.close()

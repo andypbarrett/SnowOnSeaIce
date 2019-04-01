@@ -22,8 +22,12 @@ def trajectory_to_indices(df):
     Calculates column and row indices from lat and lon
     returning xarray DataArrays for use in extracting points
     """
-    lat = df['Lat'].values
-    lon = df['Lon'].values
+    # Find latitude column name
+    lat_name = [name for name in df.columns if name in ['Lat','lat','Latitude','latitude']][0]
+    lon_name = [name for name in df.columns if name in ['Lon','lon','Longitude','longitude']][0]
+    
+    lat = df[lat_name].values
+    lon = df[lon_name].values
     col, row = lat_lon_to_col_row(lat, lon)
     #col, row = column_row_from_lat_long(lat, lon, gpd_name='Nh50km')
     col = np.floor(col).astype(int)

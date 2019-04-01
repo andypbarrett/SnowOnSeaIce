@@ -14,7 +14,7 @@ def fname(reanalysis):
               'ERAI': 'era_interim.{:s}.{:s}.month.nc',
               'JRA55': 'JRA55.fcst_phy2m.{:s}.{:s}.month.nc',
               'MERRA2': 'MERRA2.tavg1_2d_flx_Nx.{:s}.{:s}.month.nc4',
-              'ERA5': 'era5.single_level.{:s}.{:s}.month.v2.nc4',}
+              'ERA5': 'era5.single_level.{:s}.{:s}.month.nc4',}
     return fnDict[reanalysis]
 
 def filePath(reanalysis, date, grid=None):
@@ -40,7 +40,7 @@ def filePath(reanalysis, date, grid=None):
         if (reanalysis == 'CFSR'):
             path = path.replace('.nc', '.EASE_NH50km.nc')
         elif (reanalysis == 'ERA5'):
-            path = path.replace('.v2.nc','.'+grid+'.v2.nc')
+            path = path.replace('.nc4','.'+grid+'.nc4')
         else:
             path = path.replace('.nc','.'+grid+'.nc')
     
@@ -114,13 +114,15 @@ def process_one_period(reanalysis, year, grid=None, verbose=False):
          
     ds = read_files_in_list(fileList, date, reanalysis)
 
+    ntime = len(fileList)
+    
     # Sum totals
-    precTot = ds['prectot'].sum(dim='time')
-    wetdayTot = ds['wetday_total'].sum(dim='time')
+    precTot = ds['prectot'].sum(dim='time', min_count=ntime, keep_attrs=True)
+    wetdayTot = ds['wetday_total'].sum(dim='time', min_count=ntime, keep_attrs=True)
 
     # Calculate wetday count and wetday frequency
     ndays = daysinmonth(date)
-    nwetdays = (ds['wetday_frequency']*ndays).sum(dim='time') #( / ndays.sum(dim='time')
+    nwetdays = (ds['wetday_frequency']*ndays).sum(dim='time', min_count=ntime, keep_attrs=True) #( / ndays.sum(dim='time')
     fwetdays = nwetdays / ndays.sum(dim='time')
 
     # Calculate mean precip on wetdays
@@ -152,17 +154,24 @@ def make_outfile(reanalysis, grid=None):
 def process_precip_stats(reanalysis, start_year=1981, end_year=2017, grid=None, verbose=False):
     import datetime as dt
 
-    #ybeg = 1981
-    #yend = 1985 #2016
-
+    if start_year < 1981:
+        print ('WARNING: Processing requires data for August to December from previous year')
+    
     if verbose: print ('%  Processing {} PRECIP_STATS for {:d} to {:d}'.format(reanalysis, start_year, end_year))
-    year = np.arange(start_year,end_year)
+    year = np.arange(start_year,end_year+1)
     ds = xr.concat([process_one_period(reanalysis, y, grid=grid, verbose=verbose) for y in year], 'time')
     ds.coords['time'] = [dt.datetime(y,1,1) for y in year]
     
-    filo = make_outfile(reanalysis)
+    filo = make_outfile(reanalysis, grid=grid)
     if verbose: print ('%  writing {} PRECIP_STATS to {}'.format(reanalysis, filo))
-    ds.to_netcdf(filo)
+    ds.to_netcdf(filo,
+                 encoding={'precTot': {'zlib': True, 'complevel': 9},
+                           'wetdayTot': {'zlib': True, 'complevel': 9},
+                           'nwetdays': {'zlib': True, 'complevel': 9},
+                           'fwetdays': {'zlib': True, 'complevel': 9},
+                           'wetdayAve': {'zlib': True, 'complevel': 9},
+                 }
+    )
     
     return
 
