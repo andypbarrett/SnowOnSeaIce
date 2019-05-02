@@ -10,7 +10,7 @@ import os
 import datetime as dt
 import calendar
 
-from constants import filepath, vnamedict, arctic_mask_region, annual_accumulation_filepath
+from constants import filepath, vnamedict, arctic_mask_region, accumulation_period_filepath
 
 def _glob_precip_stats_dirpath(reanalysis):
     """
@@ -342,19 +342,13 @@ def load_annual_accumulation(reanalysis):
 
     Returns: an xarray dataset
     """
-    ds = xr.open_dataset(annual_accumulation_filepath[reanalysis])
+    ds = xr.open_dataset(accumulation_period_filepath[reanalysis])
 
     # Modify coordinate names to match other files
     # This will be fixed in a later version
     if reanalysis == 'CFSR':
         ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
 
-    # Scale totals and averages
-    if reanalysis == 'JRA55':
-        ds['precTot'] = ds['precTot']*0.1
-        ds['wetdayTot'] = ds['wetdayTot']*0.1
-        ds['wetdayAve'] = ds['wetdayAve']*0.1
-        
     return ds
     
 
