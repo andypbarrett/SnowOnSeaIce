@@ -17,6 +17,7 @@ from get_trajectory_reanalysis_data import trajectory_to_indices
 
 import matplotlib.pyplot as plt
 
+VARNAME = {'ERA5': 'tp'}
 
 def main(reanalysis, verbose=False):
     """
@@ -55,11 +56,12 @@ def main(reanalysis, verbose=False):
         
             # Read reanalysis cube
             if verbose: print ('Reading reanalysis data for {:4d}...'.format(y))
-            ds = read_daily_precip(reanalysis, '{}-01-01'.format(y), '{}-12-31'.format(y), grid='Nh50km')
+            ds = read_daily_precip(reanalysis, f'{y}-01-01', f'{y}-12-31', grid='Nh50km')
 
             # Extract trajectory time series
-            points = ds['PRECTOT'].sel(time=iit, x=iix, y=iiy, method='nearest')
-            trajectory.loc[trajectory.Date.dt.year == y,'PRECTOT'] = points*1e3
+            varname = VARNAME.get(reanalysis, 'PRECTOT')
+            points = ds[varname].sel(time=iit, x=iix, y=iiy, method='nearest')
+            trajectory.loc[trajectory.Date.dt.year == y,varname] = points*1e3
 
             ds.close()
         
@@ -67,7 +69,7 @@ def main(reanalysis, verbose=False):
         trajectory['PRECTOT'][trajectory['PRECTOT'] < 0.] = 0.
         
         # For Testing: plot time series
-        trajectory['PRECTOT'].to_csv('erai.prectot.daily.np{:d}.csv'.format(id))
+        trajectory['PRECTOT'].to_csv(f'{reanalysis.lower()}.prectot.daily.np{id}.csv')
 
 if __name__ == "__main__":
     reanalysis = 'ERAI'
