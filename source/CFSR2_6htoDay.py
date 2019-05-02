@@ -56,8 +56,8 @@ def cfsr2_6htoDay(diri='.', diro='.', verbose=False):
     Main routine
     """
 
-    #fileList = glob.glob( os.path.join(diri,'cdas1.*.pgrbh.grb2.nc') )
-    fileList = glob.glob( os.path.join(diri,'pgbh06.gdas.*.grb2.nc') )
+    fileList = glob.glob( os.path.join(diri,'cdas1.*.pgrbh.grb2.nc') )
+    #fileList = glob.glob( os.path.join(diri,'pgbh06.gdas.*.grb2.nc') )
     
     for f in fileList:
 
