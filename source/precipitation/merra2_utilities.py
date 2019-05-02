@@ -6,15 +6,18 @@
 import datetime as dt
 import numpy as np
 
-def get_dataset(url):
+from pydap.client import open_url                                  
+from pydap.cas.urs import setup_session                            
+from netrc import netrc
 
-    from pydap.client import open_url                                  
-    from pydap.cas.urs import setup_session                            
-    
-    user = 'apbarret'
-    pswd = 'T0talBollocks'
-    
+def start_session(url):
+    """Initiates a session"""
+    user, _, pswd = netrc().authenticators('urs.earthdata.nasa.gov')
     session = setup_session(user, pswd, check_url=url)
+    return session
+
+def get_dataset(url, session):
+
     dataset = open_url(url, session=session)
     
     return dataset
