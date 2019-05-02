@@ -115,7 +115,7 @@ def main():
         #if reanalysis == 'ERAI': break
 
     these_cols = ['Date','Lat','Lon','NP','Pg','Pc','ERAI_prectot','CFSR_prectot',
-                  'MERRA_prectot','MERRA2_prectot','JRA55_prectot']
+                  'MERRA_prectot','MERRA2_prectot','JRA55_prectot','ERA5_prectot']
     trajectory.loc[:,these_cols].to_csv('np_reanalysis_month_comparison.csv')
     #exit()
 
