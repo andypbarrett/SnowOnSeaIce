@@ -12,7 +12,7 @@ import shutil
 
 diri = '/projects/arctic_scientist_data/Reanalysis/JRA55/daily'
 
-def get_fileList(variable, grid=None):
+def get_fileList(variable, grid=None, year=None):
     """
     Gets a list of files for TOTPREC or SNOFALL
     """
@@ -20,8 +20,16 @@ def get_fileList(variable, grid=None):
         gridstr = '.{:s}'.format(grid)
     else:
         gridstr = ''
+
+    if year:
+        yearstr = str(year)
+    else:
+        yearstr = '*'
+
     return glob.glob( os.path.join( diri, variable,
-                                    '*/*/JRA55.fcst_phy2m.TOTPREC.????????{:s}.nc'.format(gridstr) ) )
+                                    f'{yearstr}/*/JRA55.fcst_phy2m.*.TOTPREC.????????{gridstr}.nc*' ) )
+
+
 def fixit(f, variable):
     """
     Does rescaling of variable
@@ -29,14 +37,19 @@ def fixit(f, variable):
     ds = xr.open_dataset(f)
     ds2 = ds.copy()
     ds.close()
-    
+
+    ds2 = ds2.rename({'PRECTOT': 'TOTPREC'})
     ds2[variable].values = ds2[variable].values * 0.125
-    ds2.to_netcdf(f, mode='w', engine='scipy')
+    ds2.to_netcdf(f, mode='a')
+    #ds2.to_netcdf(f, mode='w', engine='scipy')
+    #ds2.to_netcdf(f, 'w', encoding={variable: {'zlib': True, 'complevel': 9}})
+    
     return
 
-def fix_jra55(variable, grid=None, verbose=False):
 
-    fileList = get_fileList(variable, grid=grid)
+def fix_jra55(variable, grid=None, year=None, verbose=False):
+
+    fileList = get_fileList(variable, grid=grid, year=year)
 
     # Make directory to copy old files
     copyDir = os.path.join(diri,'copy',variable)
@@ -58,7 +71,6 @@ def fix_jra55(variable, grid=None, verbose=False):
         # Fix variable
         if verbose: print ('  Fixing {:s}'.format(variable) )
         fixit(f, variable)
-        break
     
     return
 
@@ -70,8 +82,10 @@ if __name__ == "__main__":
     parser.add_argument('variable', type=str, help='Name of variable to process')
     parser.add_argument('--grid', '-g', default=None,
                         help='Select grid to rescale: e.g. Nh50km')
+    parser.add_argument('--year', '-y', default=None,
+                        help='Year to fix')
     parser.add_argument('--verbose', '-v', action='store_true')
     args = parser.parse_args()
 
-    fix_jra55(args.variable, grid=args.grid, verbose=args.verbose)
+    fix_jra55(args.variable, grid=args.grid, year=args.year, verbose=args.verbose)
     
