@@ -8,8 +8,8 @@ def fname(reanalysis):
     Generates a file glob for PRECIP_STATS
     '''
     
-    fnDict = {'CFSR': 'CFSR.flxf06.gdas.{:s}.{:s}.month.nc',
-              'CFSR2': 'CFSR2.flxf06.gdas.{:s}.{:s}.month.nc',
+    fnDict = {'CFSR': 'CFSR.pgbh01.gdas.{:s}.{:s}.month.nc4',
+              'CFSR2': 'CFSR2.cdas1.pgrbh.{:s}.{:s}.month.nc4',
               'MERRA': 'MERRA.prod.{:s}.assim.tavg1_2d_flx_Nx.{:s}.month.nc4',
               'ERAI': 'era_interim.{:s}.{:s}.month.nc',
               'JRA55': 'JRA55.fcst_phy2m.{:s}.{:s}.month.nc',
@@ -38,7 +38,7 @@ def filePath(reanalysis, date, grid=None):
         
     if grid:
         if (reanalysis == 'CFSR'):
-            path = path.replace('.nc', '.EASE_NH50km.nc')
+            path = path.replace('.nc4', '.'+grid+'.nc4')
         elif (reanalysis == 'ERA5'):
             path = path.replace('.nc4','.'+grid+'.nc4')
         else:
@@ -83,6 +83,16 @@ def read_one_era_interim(fileName, date):
 def read_one_reanalysis(fileName):
     with xr.open_dataset(fileName) as ds:
         ds.load()
+        if ('latitude' not in ds.coords):
+            try:
+                ds.set_coords('latitude', inplace=True)
+            except ValueError:
+                print (f'read_one_analysis: latitude cannot be found in data variables for {fileName}')
+        if ('longitude' not in ds.coords):
+            try:
+                ds.set_coords('longitude', inplace=True)
+            except ValueError:
+                print (f'read_one_analysis: longitude cannot be found in data variables for {fileName}')
     return ds
 
 def read_files_in_list(fileList, date, reanalysis):
@@ -148,7 +158,7 @@ def make_outfile(reanalysis, grid=None):
         diro = '/'.join(filepath[reanalysis]['path'].split('/')[:-2]).format(vnamedict[reanalysis]['PRECIP']['name'])
         filo = filepath[reanalysis]['ffmt'].format('PRECIP_STATS','x').replace('x??','accumulation.annual')
     if grid:
-        filo.replace('.nc','{:s}.nc'.format(grid))
+        filo = filo.replace('.nc','.{:s}.nc'.format(grid))
     return os.path.join(diro,filo)
 
 def process_precip_stats(reanalysis, start_year=1981, end_year=2017, grid=None, verbose=False):
