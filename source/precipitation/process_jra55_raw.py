@@ -26,11 +26,13 @@ def make_fileout(varName, time):
     """
     Makes name of output file
     """
+    varOut = {'PRECTOT': 'TOTPREC'}
+    
     date = pd.to_datetime(time.data)
-    return os.path.join(diri, varName,
+    return os.path.join(diri, varOut[varName],
                         date.strftime('%Y'),
                         date.strftime('%m'),
-                        rawfile[varName]+'.'+varName+'.'+ \
+                        rawfile[varName]+'.'+varOut[varName]+'.'+ \
                         date.strftime('%Y%m%d')+'.nc4')
     #return 0
 
@@ -63,7 +65,7 @@ def process_one_file(fili, varName, verbose=False):
         daysum = da.resample(initial_time0_hours='D').mean(
                dim='initial_time0_hours')
     else:
-        daysum = da.resample(initial_time0_hours='D').sum(
+        daysum = da.resample(initial_time0_hours='D').mean(
                dim=['initial_time0_hours','forecast_time1'])
     daysum.attrs = da.attrs
     daysum = daysum.rename(varName)
@@ -73,7 +75,6 @@ def process_one_file(fili, varName, verbose=False):
         if verbose:
             print( '   Writing data for {} to {}'.format(pd.to_datetime(time.data).strftime('%Y-%m-%d'),
                                                       fileout) )
-        return
         write_to_netcdf( daysum.sel(initial_time0_hours=time),
                          fileout )
     
@@ -84,7 +85,7 @@ def get_fileList(varName):
 #    return glob.glob( os.path.join(diri, 'temp',
 #                                   rawpath[varName],
 #                                   rawfile[varName]+'.*.nc.gz') )
-    return glob.glob( os.path.join(diri, 'temp', rawfile[varName]+'.*.nc.gz') )
+    return glob.glob( os.path.join(diri, 'temp', rawfile[varName]+'.*.nc*') )
 
 def process_jra55_raw(varName, verbose=False):
 
@@ -94,7 +95,6 @@ def process_jra55_raw(varName, verbose=False):
     for f in fileList[1:]:
         if verbose: print( '   Processing {}'.format(f) )
         process_one_file(os.path.join(diri,f), varName, verbose=verbose)
-        break
 
 if __name__ == "__main__":
 
