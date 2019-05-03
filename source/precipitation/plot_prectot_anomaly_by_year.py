@@ -10,36 +10,29 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 import numpy as np
+import os
 
 import plotutils
 
 
 # Default range of values
-plot_params = { 
-    'precTot': {'intervals': (0., 1000., 11),
-                'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
-    'wetdayTot': {'intervals': (0., 1000., 11),
-                  'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
-    'nwetdays': {'intervals': (0., 250., 11),
-                 'extend': 'max', 'colormap': 'plasma_r', 'cb_label': 'N'},
-    'fwetdays': {'intervals': (0., 1., 11),
-                 'extend': 'neither', 'colormap': 'plasma_r', 'cb_label': 'fraction'},
-    'wetdayAve': {'intervals': (1., 5., 9),
-                  'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
-}
+plot_params = {'intervals': (-200., 200., 11),
+               'extend': 'both',
+               'colormap': 'coolwarm',
+               'cb_label': 'mm'}
 
 
 def get_plot_params(field):
     """Returns colormap and norm for a given field"""
-    cmap = plotutils.get_cmap(plot_params[field]['colormap'])
-    bounds = np.linspace(*plot_params[field]['intervals'])
+    cmap = plotutils.get_cmap(plot_params['colormap'])
+    bounds = np.linspace(*plot_params['intervals'])
     norm = mcolors.BoundaryNorm(boundaries=bounds, ncolors=cmap.N)
     
-    return cmap, norm, plot_params[field]['extend'], plot_params[field]['cb_label']
+    return cmap, norm, plot_params['extend'], plot_params['cb_label']
 
 
-def plot_precip_stats(field, height=5., width=8.5, fix_aspect=True, 
-                      outdiri='.', nosave=False):
+def plot_prectot_anomaly_by_year(year, height=5., width=8.5, fix_aspect=True, 
+                                 outdiri='.', nosave=False):
     """Generates plot of PRECIP_STATS field for the six reanalyses in
     the Snow on Sea Ice precipitation paper
 
@@ -53,9 +46,9 @@ def plot_precip_stats(field, height=5., width=8.5, fix_aspect=True,
     nosave - Plot is not written to file but displayed using plt.show()
     """
 
-    cmap, norm, cb_extend, cb_units = get_plot_params(field)
+    cmap, norm, cb_extend, cb_units = get_plot_params('precTot')
 
-    ds = plotutils.load_data(field, 'mean')
+    ds = plotutils.load_data('precTot', 'anomaly').sel(time=year).squeeze()
     fig, ax = plotutils.make_figure(ds, norm=norm, cmap=cmap, height=height, width=width,
                                     cb_extend=cb_extend, cb_units=cb_units)
 
@@ -63,7 +56,7 @@ def plot_precip_stats(field, height=5., width=8.5, fix_aspect=True,
         plt.show()
     else:
         fileout = os.path.join(outdiri,
-                           f'arctic_precipitation.accumulation_period.climatology.{field}.cfsr_totprec.png')
+                           f'arctic_precipitation.accumulation_period.precTot_anomaly.{year}.cfsr_totprec.png')
         print ('Saving plot to ' + fileout)
         fig.savefig(fileout)
     
@@ -75,7 +68,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Plots climatologies of PRECIP_STATS for precipitation paper")
-    parser.add_argument('field', type=str,
+    parser.add_argument('year', type=str,
                         help='Data field to plot: precTot, wetdayTot, nwetdays, fwetdays, wetdayAve')
     parser.add_argument('--height', type=float, default=5,
                         help='Height of figure in inches (default 5")')
@@ -90,6 +83,6 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    plot_precip_stats(args.field, height=args.height, width=args.width, fix_aspect=args.fix_aspect,
-                      outdiri=args.outdiri, nosave=args.nosave)
+    plot_prectot_anomaly_by_year(args.year, height=args.height, width=args.width, fix_aspect=args.fix_aspect,
+                                 outdiri=args.outdiri, nosave=args.nosave)
     

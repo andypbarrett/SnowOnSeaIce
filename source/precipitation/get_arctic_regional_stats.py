@@ -7,21 +7,7 @@ import pandas as pd
 
 import utilities as util
 
-region = {
-    'CENTRAL_ARCTIC': 15,
-    'BEAUFORT':       13,
-    'CHUKCHI':        12,
-    'BARENTS':         8,
-    'KARA':            9,
-    'LAPTEV':         10,
-    'EAST_SIBERIAN':  11,
-    'GREENLAND':       7,
-    'BAFFIN':          6,
-    'CAA':            14,
-    'BERING':          3,
-    'OKHOTSK':         2,
-    'HUDSON_BAY':      4,
-         }
+from constants import arctic_mask_region
 
 def globFiles(reanalysis):
     """
@@ -36,12 +22,12 @@ def globFiles(reanalysis):
         'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/'
                  '????/??/MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
         'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/'
-                  '????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.v2.nc4',
+                  '????/??/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.nc4',
         'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/'
                  '????/??/JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
         'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/'
                 '????/??/era5.single_level.PRECIP_STATS.??????.month.Nh50km.nc4'
-               }
+    }
 
     fileList = glob.glob(globPath[reanalysis])
 
@@ -60,7 +46,11 @@ def read_precip_stats_mf(reanalysis):
 
     def read_one_file(path):
         "Reads a single file using a context manager to ensure file gets closed"
-        with xr.open_dataset(path) as ds:
+        with xr.open_dataset(path, drop_variables=['latitude', 'longitude']) as ds:
+            #if ('latitude' not in ds.coords) & ('latitude' in ds.data_vars):
+            #    ds.set_coords('latitude')
+            #if ('longitude' not in ds.coords) & ('longitude' in ds.data_vars):
+            #    ds.set_coords('longitude')
             ds.load()
             return ds
         
@@ -102,13 +92,13 @@ def arctic_regional_precip_stats(reanalysis, verbose=False):
     """
 
     if verbose: print ('   Getting precip stats fields...')
-    ds = read_precip_stats(reanalysis)
+    ds = read_precip_stats_mf(reanalysis)
 
     if verbose: print ('   Getting mask...')
     mask = util.read_region_mask()
 
     by_region = []
-    for key in region.keys():
+    for key in arctic_mask_region.keys():
         if verbose: print ('   Getting regional stats for '+key+'...')
         by_region.append( util.region_stats(ds, mask, key).to_dataframe() )
 
@@ -117,7 +107,7 @@ def arctic_regional_precip_stats(reanalysis, verbose=False):
     #by_region = [_get_region_stats(ds, mask, key).to_dataframe() for key in region.keys()]
 
     if verbose: print ('   Concatenating dataframes...')
-    df = pd.concat( by_region, axis=1, keys=(region.keys()) )
+    df = pd.concat( by_region, axis=1, keys=(arctic_mask_region.keys()) )
     
     return df 
 
@@ -134,7 +124,7 @@ def get_arctic_regional_stats(verbose=False):
         'ERA5',
     ]
 
-    for reanalysis in products[3:]:
+    for reanalysis in products[3:4]:
         
         if verbose: print ('Getting stats for '+reanalysis)
         df = arctic_regional_precip_stats(reanalysis, verbose=verbose)

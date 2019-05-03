@@ -3,8 +3,17 @@
 import utilities as util
 import datetime as dt
 import numpy as np
+import re
 
 np.seterr(all='ignore') # to deal with Runtime warning about NaNs
+
+def get_year(f):
+    """Finds year from fileGlob string"""
+    p = re.compile('/(\d{4})/')
+    print (f)
+    m = p.search(f)
+    print (m)
+    return int(m.groups(0)[0])
 
 def get_precip_statistics(fileGlob, reanalysis, threshold=1.):
     '''
@@ -21,6 +30,7 @@ def get_precip_statistics(fileGlob, reanalysis, threshold=1.):
     import xarray as xr
 
     from constants import vnamedict
+    # This deals with a inconsistency in variable names in JRA55 data
     varName = vnamedict[reanalysis]['PRECIP']['name']
     
     try:
