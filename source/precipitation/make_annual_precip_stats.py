@@ -7,6 +7,8 @@ import glob
 import re
 import xarray as xr
 import datetime as dt
+import numpy as np
+
 
 def get_fileList(reanalysis, grid='Nh50km'):
     """
@@ -82,19 +84,32 @@ def fileOut(reanalysis):
     return filo[reanalysis]
 
 
-def annual_precip_stats(reanalysis, verbose=False):
+def my_mean(x):
+    """Returns mean over time dimension if 12 months of data, NaN if not"""
+    min_count = 12
+    with np.errstate(all='ignore'):
+        xave = xr.apply_ufunc(np.mean, x,
+                              input_core_dims=[['time']], kwargs={'axis': -1})
+    if x.shape[0] < min_count:
+        xave[:,:] = np.nan
+    return xave
 
+
+def annual_precip_stats(reanalysis, verbose=False):
+    """Calculate annual PRECIP_STATS, write t netcdf"""
+
+    if verbose: print (f'Loading PRECIP_STATS for {reanalysis}') 
     ds = get_data(reanalysis)
     
     if verbose: print ('Calculating annual summary...')
     dsAnn = xr.Dataset({
-        'wetday_mean': ds['wetday_mean'].groupby('time.year').mean(dim='time', min_count=12),
-        'wetday_frequency': ds['wetday_frequency'].groupby('time.year').sum(dim='time', min_count=12),
+        'wetday_mean': ds['wetday_mean'].groupby('time.year').apply(my_mean),
+        'wetday_frequency': ds['wetday_frequency'].groupby('time.year').apply(my_mean),
         'wetday_total': ds['wetday_total'].groupby('time.year').sum(dim='time', min_count=12),
-        'wetday_max': ds['wetday_max'].groupby('time.year').mean(dim='time', min_count=12),
+        'wetday_max': ds['wetday_max'].groupby('time.year').apply(my_mean),
         'prectot': ds['prectot'].groupby('time.year').sum(dim='time', min_count=12)})
 
-    if verbose: print ('Writing data to {:s}'.fileOut(reanalysis))
+    if verbose: print (f'Writing data to {fileOut(reanalysis)}')
     dsAnn.to_netcdf(fileOut(reanalysis))
 
     return
