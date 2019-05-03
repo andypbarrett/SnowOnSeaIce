@@ -17,8 +17,8 @@ def get_fileList(reanalysis, grid='Nh50km'):
     
     globStr = {'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/*/*/' + \
                        'era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
-               'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/PRATE/*/*/' + \
-                       'CFSR*.flxf06.gdas.PRECIP_STATS.??????.month.EASE_NH50km.nc',
+               'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/????/??/' + \
+                       'CFSR*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
                'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/*/*/' + \
                         'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
                'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/*/*/' + \
@@ -26,7 +26,10 @@ def get_fileList(reanalysis, grid='Nh50km'):
                'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/*/*/' + \
                         'JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc'}
 
-    return glob.glob(globStr[reanalysis])
+    filelist = glob.glob(globStr[reanalysis])
+    
+    return sorted(filelist)
+
 
 def fileOut(reanalysis):
 
