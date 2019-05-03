@@ -15,24 +15,59 @@ def get_fileList(reanalysis, grid='Nh50km'):
     ***Currently returns files for Nh50km grid only***
     """
     
-    globStr = {'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/*/*/' + \
-                       'era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
-               'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/????/??/' + \
-                       'CFSR*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
-               'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/*/*/' + \
-                        'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
-               'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/*/*/' + \
-                         'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.nc4',
-               'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/*/*/' + \
-                        'JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc'}
+    globStr = {
+        'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/*/*/' + \
+                'era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
+        'CFSR': '/disks/arctic5_raid/abarrett/CFSR*/TOTPREC/????/??/' + \
+                'CFSR*.*.PRECIP_STATS.??????.month.Nh50km.nc4',
+        'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/*/*/' + \
+                 'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
+        'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/*/*/' + \
+                  'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.nc4',
+        'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/*/*/' + \
+                 'JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
+        'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/????/??/' + \
+                'era5.single_level.PRECIP_STATS.??????.month.Nh50km.nc4'
+    }
 
     filelist = glob.glob(globStr[reanalysis])
     
     return sorted(filelist)
 
 
-def fileOut(reanalysis):
+def load_one(f):
+    """Loads one precip_stats file"""
+    ds = xr.open_dataset(f)
+    if 'latitude' in ds.data_vars:
+        ds = ds.set_coords('latitude')
+    if 'longitude' in ds.data_vars:
+        ds = ds.set_coords('longitude')
+    return ds
 
+
+def date_from_fname(f):
+    """Extract datestring from filepath and converts to datetime"""
+    return dt.datetime.strptime(re.search('\.(\d{6})\.', f).group(1), '%Y%m')
+
+
+def get_data(reanalysis, grid='Nh50km'):
+    """Loads reanalysis precip_stats
+
+    Returns: an xarray dataset
+    """
+
+    filelist = get_fileList(reanalysis, grid=grid)
+    ds = xr.concat([load_one(f) for f in filelist], dim='time')
+
+    ds.coords['time'] = [date_from_fname(f) for f in filelist]
+
+    ds = ds.where(ds.latitude > -999.)
+    
+    return ds
+
+
+def fileOut(reanalysis):
+    
     filo = {'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/' + \
                        'era_interim.PRECIP_STATS.annual.Nh50km.nc',
                'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/' + \
@@ -46,30 +81,24 @@ def fileOut(reanalysis):
 
     return filo[reanalysis]
 
+
 def annual_precip_stats(reanalysis, verbose=False):
 
-    fileList = get_fileList(reanalysis)
-    fileList.sort()
-
-    time = [dt.datetime.strptime(re.search('\d{6}',f).group(0),'%Y%m') for f in fileList]
-
-    if verbose: print ('Getting data...')
-    ds = xr.open_mfdataset(fileList, concat_dim='time')
-    ds['time'] = time
-
-    print (ds)
+    ds = get_data(reanalysis)
     
     if verbose: print ('Calculating annual summary...')
-    dsAnn = xr.Dataset({'wetday_mean': ds['wetday_mean'].groupby('time.year').mean(dim='time'),
-                        'wetday_frequency': ds['wetday_frequency'].groupby('time.year').sum(dim='time'),
-                        'wetday_total': ds['wetday_total'].groupby('time.year').sum(dim='time'),
-                        'wetday_max': ds['wetday_max'].groupby('time.year').mean(dim='time'),
-                        'prectot': ds['prectot'].groupby('time.year').sum(dim='time')})
+    dsAnn = xr.Dataset({
+        'wetday_mean': ds['wetday_mean'].groupby('time.year').mean(dim='time', min_count=12),
+        'wetday_frequency': ds['wetday_frequency'].groupby('time.year').sum(dim='time', min_count=12),
+        'wetday_total': ds['wetday_total'].groupby('time.year').sum(dim='time', min_count=12),
+        'wetday_max': ds['wetday_max'].groupby('time.year').mean(dim='time', min_count=12),
+        'prectot': ds['prectot'].groupby('time.year').sum(dim='time', min_count=12)})
 
     if verbose: print ('Writing data to {:s}'.fileOut(reanalysis))
     dsAnn.to_netcdf(fileOut(reanalysis))
 
     return
+
 
 if __name__ == "__main__":
 
