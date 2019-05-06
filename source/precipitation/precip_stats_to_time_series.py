@@ -32,11 +32,6 @@ def precip_stats_to_time_series(reanalysis):
     if reanalysis == 'CFSR':
         if ('row' in ds.dims) & ('col' in ds.dims): ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
     
-    #if reanalysis == 'JRA55':
-    #    ds['precTot'] = ds['precTot']*0.1
-    #    ds['wetdayTot'] = ds['wetdayTot']*0.1
-    #    ds['wetdayAve'] = ds['wetdayAve']*0.1
-        
     dsMsk = ds * mask['ocean']
     dsSeries = dsMsk.mean(dim=['x','y'])
     
