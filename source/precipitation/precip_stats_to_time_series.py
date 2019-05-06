@@ -14,6 +14,8 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import numpy as np
 
+from constants import maskFile
+
 fili = {'CFSR': '/disks/arctic5_raid/abarrett/CFSR/TOTPREC/CFSR.pgbh01.gdas.PRECIP_STATS.accumulation.annual.Nh50km.nc4',
         'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/era_interim.PRECIP_STATS.accumulation.annual.Nh50km.nc',
         'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/JRA55.fcst_phy2m.PRECIP_STATS.accumulation.annual.Nh50km.nc',
@@ -21,7 +23,6 @@ fili = {'CFSR': '/disks/arctic5_raid/abarrett/CFSR/TOTPREC/CFSR.pgbh01.gdas.PREC
         'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.accumulation.annual.Nh50km.nc4',
         'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/era5.single_level.PRECIP_STATS.accumulation.annual.Nh50km.nc4'}
 
-maskFile = '/home/apbarret/src/utilities/data/arctic_mask.ocean.Nh50km.nc'
 
 def precip_stats_to_time_series(reanalysis):
 
