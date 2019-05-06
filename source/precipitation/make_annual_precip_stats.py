@@ -10,6 +10,22 @@ import datetime as dt
 import numpy as np
 
 
+OUTFILE = {
+    'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/' + \
+            'era_interim.PRECIP_STATS.annual.Nh50km.nc',
+    'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/' + \
+            'CFSR.flxf06.gdas.PRECIP_STATS.annual.EASE_NH50km.nc',
+    'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/' + \
+             'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.annual.Nh50km.nc4',
+    'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/' + \
+              'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.annual.Nh50km.nc4',
+    'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/' + \
+             'JRA55.fcst_phy2m.PRECIP_STATS.annual.Nh50km.nc',
+    'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/' + \
+            'era5.single_level.PRECIP_STATS.annual.Nh50km.nc4',
+}
+
+
 def get_fileList(reanalysis, grid='Nh50km'):
     """
     Returns list of files containing monthly precipitation stats
@@ -68,22 +84,6 @@ def get_data(reanalysis, grid='Nh50km'):
     return ds
 
 
-def fileOut(reanalysis):
-    
-    filo = {'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/' + \
-                       'era_interim.PRECIP_STATS.annual.Nh50km.nc',
-               'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/' + \
-                       'CFSR.flxf06.gdas.PRECIP_STATS.annual.EASE_NH50km.nc',
-               'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/' + \
-                        'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.annual.Nh50km.nc4',
-               'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/' + \
-                         'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.annual.Nh50km.nc4',
-               'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/' + \
-                        'JRA55.fcst_phy2m.PRECIP_STATS.annual.Nh50km.nc'}
-
-    return filo[reanalysis]
-
-
 def my_mean(x):
     """Returns mean over time dimension if 12 months of data, NaN if not"""
     min_count = 12
@@ -109,8 +109,8 @@ def annual_precip_stats(reanalysis, verbose=False):
         'wetday_max': ds['wetday_max'].groupby('time.year').apply(my_mean),
         'prectot': ds['prectot'].groupby('time.year').sum(dim='time', min_count=12)})
 
-    if verbose: print (f'Writing data to {fileOut(reanalysis)}')
-    dsAnn.to_netcdf(fileOut(reanalysis))
+    if verbose: print (f'Writing data to {OUTFILE[reanalysis]}')
+    dsAnn.to_netcdf(OUTFILE[reanalysis])
 
     return
 
