@@ -91,7 +91,10 @@ def load_one(reanalysis, field, ybeg='1981', yend='2015', transform='none'):
         'anomaly': lambda da: da - da.sel(time=slice(ybeg,yend)).mean(dim='time')
         }
     ds = xr.open_dataset(accumulation_period_filepath[reanalysis])
-    da = ds[field]
+    if field == "drizzle":
+        da = ds.precTot - ds.wetdayTot
+    else:
+        da = ds[field]
     year = ds['time'].dt.year
     if transform is not 'none':
         da = tfunc[transform](da)
