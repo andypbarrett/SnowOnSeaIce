@@ -9,21 +9,7 @@ import xarray as xr
 import datetime as dt
 import numpy as np
 
-
-OUTFILE = {
-    'ERAI': '/disks/arctic5_raid/abarrett/ERA_Interim/daily/PRECTOT/' + \
-            'era_interim.PRECIP_STATS.annual.Nh50km.nc',
-    'CFSR': '/disks/arctic5_raid/abarrett/CFSR/PRATE/' + \
-            'CFSR.flxf06.gdas.PRECIP_STATS.annual.EASE_NH50km.nc',
-    'MERRA': '/disks/arctic5_raid/abarrett/MERRA/daily/PRECTOT/' + \
-             'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.annual.Nh50km.nc4',
-    'MERRA2': '/disks/arctic5_raid/abarrett/MERRA2/daily/PRECTOT/' + \
-              'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.annual.Nh50km.nc4',
-    'JRA55': '/projects/arctic_scientist_data/Reanalysis/JRA55/daily/TOTPREC/' + \
-             'JRA55.fcst_phy2m.PRECIP_STATS.annual.Nh50km.nc',
-    'ERA5': '/projects/arctic_scientist_data/Reanalysis/ERA5/daily/TOTPREC/' + \
-            'era5.single_level.PRECIP_STATS.annual.Nh50km.nc4',
-}
+from constants import annual_total_filepath as OUTFILE
 
 
 def get_fileList(reanalysis, grid='Nh50km'):
