@@ -5,6 +5,7 @@
 
 #import matplotlib
 #matplotlib.use('Agg')
+import os
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -17,6 +18,8 @@ import plotutils
 # Default range of values
 plot_params = { 
     'precTot': {'intervals': (0., 1000., 11),
+                'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
+    'drizzle': {'intervals': (0., 100., 11),
                 'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
     'wetdayTot': {'intervals': (0., 1000., 11),
                   'extend': 'max', 'colormap': 'viridis_r', 'cb_label': 'mm'},
