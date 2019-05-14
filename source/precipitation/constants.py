@@ -104,17 +104,17 @@ arctic_ocean_accum_paths = {
     }
 
 annual_total_filepath = {
-    'ERAI': os.path.join(reanalysis_path['ERAI'],
+    'ERAI': os.path.join(reanalysis_dirpath['ERAI'],
                          'era_interim.PRECIP_STATS.annual.Nh50km.nc'),
-    'CFSR': os.path.join(reanalysis_path['CFSR'],
+    'CFSR': os.path.join(reanalysis_dirpath['CFSR'],
                          'CFSR.flxf06.gdas.PRECIP_STATS.annual.EASE_NH50km.nc'),
-    'MERRA': os.path.join(reanalysis_path['MERRA'],
+    'MERRA': os.path.join(reanalysis_dirpath['MERRA'],
                           'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.annual.Nh50km.nc4'),
-    'MERRA2': os.path.join(reanalysis_path['MERRA2'],
+    'MERRA2': os.path.join(reanalysis_dirpath['MERRA2'],
                            'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.annual.Nh50km.nc4'),
-    'JRA55': os.path.join(reanalysis_path['JRA55'],
+    'JRA55': os.path.join(reanalysis_dirpath['JRA55'],
                           'JRA55.fcst_phy2m.PRECIP_STATS.annual.Nh50km.nc'),
-    'ERA5': os.path.join(reanalysis_path['ERA5'],
+    'ERA5': os.path.join(reanalysis_dirpath['ERA5'],
                          'era5.single_level.PRECIP_STATS.annual.Nh50km.nc4'),
     }
 
