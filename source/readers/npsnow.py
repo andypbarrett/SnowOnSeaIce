@@ -7,6 +7,10 @@ import datetime as dt
 import calendar
 import numpy as np
 
+import re
+import os
+import glob
+
 def read_precip(fili):
     """
     Reader for precipitation files contained in the NPSNOW data set
@@ -43,6 +47,38 @@ def read_precip(fili):
     df = df.where(df > 0., 0.0)
     
     return df[['statid','amount','type']]
+
+
+def load_precip_table(exclude=None, dirpath='/home/apbarret/data/NPSNOW/precip'):
+    """Loads NPSNOW precipitation data into pandas dataframe 
+    indexed by date and in columns for each station id.
+    
+    exclude - list of integers containing station ids to exclude or
+              single string denoting type of analysis.
+              Currently on "bogdanova" is only group string
+              "bogdanova" excludes stations 3, 4 and 14.  See 
+              Bogdanova et al 2002 for details.
+
+    Returns pandas dataframe
+    """
+
+    if exclude:
+        if isinstance(exclude, list):
+            exclude_regex = '|'.join([f'np_{id:02d}' for id in exclude])
+        elif exclude == "bogdanova":
+            exclude_regex = 'np_03|np_04|np_14'
+        else:
+            raise NameError(f'exclude value {exclude} not found')
+
+    filelist = glob.glob(os.path.join(dirpath, 'np_??_??.pre'))
+    if exclude:
+        filelist = [f for f in filelist if not re.search(f, exclude_regex)]
+
+    df = pd.concat([read_precip(f) for f in filelist])
+    table = pd.pivot_table(df, values='amount', index=df.index, columns='statid')
+
+    return table
+
 
 def read_position(fili, original=False):
     """
