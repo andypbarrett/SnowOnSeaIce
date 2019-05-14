@@ -38,12 +38,32 @@ def fixit(f, variable):
     ds2 = ds.copy()
     ds.close()
 
-    ds2 = ds2.rename({'PRECTOT': 'TOTPREC'})
+    if 'PRECTOT' in ds2:
+        ds2 = ds2.rename({'PRECTOT': 'TOTPREC'})
+        
     ds2[variable].values = ds2[variable].values * 0.125
     ds2.to_netcdf(f, mode='a')
     #ds2.to_netcdf(f, mode='w', engine='scipy')
     #ds2.to_netcdf(f, 'w', encoding={variable: {'zlib': True, 'complevel': 9}})
     
+    return
+
+
+def fix_one(f, variable, verbose=False):
+    # Copy file
+    copyDir = os.path.join(diri,'copy',variable)
+    fcpy = os.path.join(copyDir, os.path.basename(f).replace('.nc','.old.nc'))
+    if os.path.exists(fcpy):
+        print ('....Skipping {:s}'.format(f))
+        return # Skip files that have already been corrected
+
+    if verbose: print ('  Copying {:s} to {:s}'.format(f, fcpy))
+    shutil.copy2( f, fcpy )
+
+    # Fix variable
+    if verbose: print ('  Fixing {:s}'.format(variable) )
+    fixit(f, variable)
+
     return
 
 
