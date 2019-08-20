@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from get_arctic_regional_stats import read_arctic_regional_stats
+from get_arctic_regional_snowfall_stats import read_arctic_regional_stats
 
 filepath = {
     'ERAI': 'erai_regional_stats.csv',

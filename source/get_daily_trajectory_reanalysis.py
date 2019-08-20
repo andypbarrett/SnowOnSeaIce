@@ -17,7 +17,42 @@ from get_trajectory_reanalysis_data import trajectory_to_indices
 
 import matplotlib.pyplot as plt
 
-VARNAME = {'ERA5': 'tp'}
+VARNAME = {
+    'ERA5': 'tp',
+    'CFSR': 'TOTPREC',
+    'JRA55': 'TOTPREC',
+}
+
+SCALE = {
+    'ERA5': 1e3,
+    'ERAI': 1e3,
+    'MERRA': 1.,
+    'MERRA2': 1.,
+    'CFSR': 1.,
+    'JRA55': 1.
+}
+
+def load_reanalysis(reanalysis, year):
+    """Loads daily reanalysis for a given year 
+
+    Returns a DataArray of total precipitation scaled to mm
+    """
+    ds = read_daily_precip(reanalysis, f'{year}-01-01', f'{year}-12-31', grid='Nh50km')
+    da = ds[VARNAME.get(reanalysis, 'PRECTOT')]
+    da = da * SCALE[reanalysis]  # Convert meters to mm
+    return da
+
+
+def load_trajectory(id):
+    """Loads a trajectory for a given drifting station.  Adds Date and PRECTOT columns"""
+    dirpath = '/home/apbarret/data/NPSNOW/updated_position'
+
+    filepath = os.path.join(dirpath, f'position.daily.{id:02d}') 
+    trajectory = pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
+    trajectory['Date'] = trajectory.index  # Add Date so that trajectory_to_indices works
+    trajectory['PRECTOT'] = np.nan
+    return trajectory
+
 
 def main(reanalysis, verbose=False):
     """
@@ -28,50 +63,59 @@ def main(reanalysis, verbose=False):
     last_date  - last date to read YYYY-MM-DD
     """
 
-    # Set first year
-    first_year = 1979
-    dirpath = '/home/apbarret/data/NPSNOW/updated_position'
-        
-    for id in [22,24,25,26,28,29,30,31]:
+    # Reanalyses only available after 1979, except for MERRA2
+    # which is available after 1980
+    if reanalysis == 'MERRA2':
+        first_year = 1980
+    else:
+        first_year = 1979
 
-        print ('Getting prectot for {:d}'.format(id))
+    stations = [22,24,25,26,28,29,30,31]
+    
+    for id in stations:
+
+        if verbose: print ('Getting prectot for {:d}'.format(id))
         
         # Read trajectory
-        filepath = 'position.{:d}'.format(id)
-        trajectory = read_position( os.path.join(dirpath, filepath) )
-        trajectory['Date'] = trajectory.index # Add Date so that trajectory_to_indices works
-        trajectory['PRECTOT'] = np.nan
-
-        # Get indices for time, lat and lon
-        it, ix, iy = trajectory_to_indices(trajectory)
+        trajectory = load_trajectory(id)
 
         # Get unique list of years after 1979
         years = [y for y in list( set( trajectory.Date.dt.year ) ) if y >= first_year]
 
         for y in years:
             
-            iit = it[it.dt.year == y]
-            iix = ix[it.dt.year == y]
-            iiy = iy[it.dt.year == y]
-        
+            # Get indices for time, lat and lon
+            it, ix, iy = trajectory_to_indices(trajectory[str(y)])
+
             # Read reanalysis cube
             if verbose: print ('Reading reanalysis data for {:4d}...'.format(y))
-            ds = read_daily_precip(reanalysis, f'{y}-01-01', f'{y}-12-31', grid='Nh50km')
-
+            da = load_reanalysis(reanalysis, y)
+            
             # Extract trajectory time series
-            varname = VARNAME.get(reanalysis, 'PRECTOT')
-            points = ds[varname].sel(time=iit, x=iix, y=iiy, method='nearest')
-            trajectory.loc[trajectory.Date.dt.year == y,varname] = points*1e3
+            if verbose: print ('Extracting points...')
+            points = da.sel(time=it, x=ix, y=iy, method='nearest')
+            #trajectory['PRECTOT'] = points.to_series()
+            
+            da.close()
 
-            ds.close()
-        
         # Set precipitation values (normally 10**-9) to zero
-        trajectory['PRECTOT'][trajectory['PRECTOT'] < 0.] = 0.
+        trajectory['PRECTOT'].where(trajectory['PRECTOT'] < 0., 0.)
         
         # For Testing: plot time series
-        trajectory['PRECTOT'].to_csv(f'{reanalysis.lower()}.prectot.daily.np{id}.csv')
+        fileout = f'{reanalysis.lower()}.prectot.daily.np{id}.csv'
+        if verbose: print (f'Writing PRECTOT for {reanalysis} for trajectory NP{id:02d} to {fileout}')
+        trajectory['PRECTOT'].to_csv(fileout)
 
+        
 if __name__ == "__main__":
-    reanalysis = 'ERAI'
-    main(reanalysis, verbose=True)
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description = 'Extracts daily reanalysis precipitation for NP trajectories')
+    parser.add_argument('reanalysis', type=str, help='Name or reanalysis')
+    parser.add_argument('--verbose', '-v', action='store_true')
+
+    args = parser.parse_args()
+    
+    main(args.reanalysis, verbose=args.verbose)
     

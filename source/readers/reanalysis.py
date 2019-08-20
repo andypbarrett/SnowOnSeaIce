@@ -65,12 +65,15 @@ def daily_filepath(reanalysis, date, grid=None):
      """Generates filepath for daily reanalysis precipitation"""
      dirpath = REANALYSIS_PATH[reanalysis]['path'].format(vnamedict[reanalysis]['PRECIP']['name'],
                                                           date.year,date.month)
-     filename = REANALYSIS_PATH[reanalysis]['ffmt'].replace('??','').format(vnamedict[reanalysis]['PRECIP']['name'],
+     filename = REANALYSIS_PATH[reanalysis]['ffmt'].replace('}??','}').format(vnamedict[reanalysis]['PRECIP']['name'],
                                                                             date.strftime('%Y%m%d'))
      if grid:
           filename=filename.replace('.nc','.Nh50km.nc')
-                             
-     return os.path.join(dirpath,filename)
+
+     if reanalysis in ['MERRA', 'MERRA2']:
+          return glob.glob(os.path.join(dirpath,filename))[0]
+     else:
+          return os.path.join(dirpath,filename)
 
 def read_netcdfs(paths, dim, drop_variables=None):
      """

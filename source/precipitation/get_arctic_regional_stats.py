@@ -7,7 +7,7 @@ import pandas as pd
 
 import utilities as util
 
-from constants import arctic_mask_region
+from constants import arctic_mask_region, accumulation_period_filepath
 
 def globFiles(reanalysis):
     """
@@ -82,17 +82,36 @@ def read_precip_stats(reanalysis):
                                       'wetday_max',
                                       'prectot',])
     ds.load()
+    ds['drizzle'] = ds['prectot'] - ds['wetday_total']
     ds.coords['time'] = date
     
     return ds.sortby(ds.time)
 
-def arctic_regional_precip_stats(reanalysis, verbose=False):
+
+def read_precip_stats_accum(reanalysis):
+    """Reads gridded precip stats for the accumulation period"""
+    ds = xr.open_dataset(accumulation_period_filepath[reanalysis])
+    ds['drizzle'] = ds['precTot'] - ds['wetdayTot']
+    return ds
+
+    
+def load_data(reanalysis, period='month'):
+    """Loads data for a given reanalysis for a given period"""
+    if period == 'month':
+        return read_precip_stats_mf(reanalysis)
+    elif period == 'accumulation':
+        return read_precip_stats_accum(reanalysis)
+    else:
+        raise KeyError('Unknown period')
+            
+
+def arctic_regional_precip_stats(reanalysis, verbose=False, period='month'):
     """
     Calculates regional precip stats for a reanalysis
     """
-
+    
     if verbose: print ('   Getting precip stats fields...')
-    ds = read_precip_stats_mf(reanalysis)
+    ds = load_data(reanalysis, period=period)
 
     if verbose: print ('   Getting mask...')
     mask = util.read_region_mask()
@@ -111,30 +130,32 @@ def arctic_regional_precip_stats(reanalysis, verbose=False):
     
     return df 
 
-def get_arctic_regional_stats(verbose=False):
+def get_arctic_regional_stats(reanalysis, period='month', verbose=False):
     """
     Calculates stats for all reanalyses
     """
-    products = [
-        'ERAI',
-        'CFSR',
-        'MERRA',
-        'MERRA2',
-        'JRA55',
-        'ERA5',
-    ]
-
-    for reanalysis in products[3:4]:
-        
-        if verbose: print ('Getting stats for '+reanalysis)
-        df = arctic_regional_precip_stats(reanalysis, verbose=verbose)
+    if verbose: print ('Getting stats for '+reanalysis)
+    df = arctic_regional_precip_stats(reanalysis, verbose=verbose, period=period)
     
-        outfile = '{:s}_regional_stats.csv'.format(reanalysis.lower())
-        if verbose: print ('   Writing to '+outfile)
-        df.to_csv(outfile)
+    outfile = f'{reanalysis.lower()}_regional_stats.{period}.csv'
+    if verbose: print ('   Writing to '+outfile)
+    df.to_csv(outfile)
 
+    
 if __name__ == "__main__":
-    get_arctic_regional_stats(verbose=True)
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Returns regional means of precip stats')
+    parser.add_argument('reanalysis', type=str,
+                        help='Name of reanalysis')
+    parser.add_argument('--period', '-p', type=str, default='month',
+                        help='Aggregating period: month, accumulation')
+    parser.add_argument('--verbose', '-v', action='store_true')
+    
+    args = parser.parse_args()
+
+    get_arctic_regional_stats(args.reanalysis, period=args.period, verbose=args.verbose)
     
     
 

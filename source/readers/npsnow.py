@@ -75,7 +75,8 @@ def load_precip_table(exclude=None, dirpath='/home/apbarret/data/NPSNOW/precip')
         filelist = [f for f in filelist if not re.search(f, exclude_regex)]
 
     df = pd.concat([read_precip(f) for f in filelist])
-    table = pd.pivot_table(df, values='amount', index=df.index, columns='statid')
+    table = pd.pivot_table(df, values='amount', index=df.index,
+                           columns='statid')
 
     return table
 
@@ -127,6 +128,18 @@ def read_position(fili, original=False):
                 df['lon'].mod(1000).divide(600)
     
     return df[['lat','lon']]
+
+
+def read_daily_position(id):
+    """Reads daily position files created from interpolating updated position
+
+    id - number of drifting station
+
+    Returns: Pandas dataframe
+    """
+    filepath = f'/home/apbarret/data/NPSNOW/updated_position/position.daily.{id:02}'
+    return pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
+
 
 def read_uniformat(fili):
     """

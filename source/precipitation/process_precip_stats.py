@@ -25,7 +25,7 @@ def filePath(reanalysis, date, grid=None):
     date - datetime object
     '''
     import os, glob
-    from constants import filepath, vnamedict
+    from precipitation.constants import filepath, vnamedict
 
     if (reanalysis == 'CFSR') & (date.year > 2010):
         path = os.path.join(filepath['CFSR2']['path'].format(vnamedict['CFSR2']['PRECIP']['name'],

@@ -3,16 +3,21 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
+
 def rmse(df,x,y):                                                    
     return ( (df[x] - df[y])**2 ).mean()**0.5
+
 
 def bias(df,x,y):                                                    
     return df[y].mean()/df[x].mean()
 
+
 def correlate(df, x, y):                                             
     return df.loc[:,[x,y]].corr().iloc[0,1]  
 
-def scatter_plot(df, x, y, ax=None, xlabel='X', ylabel='Y', title=''):
+
+def scatter_plot(df, x, y, ax=None, xlabel='X', ylabel='Y', title='',
+                 min_value=None, max_value=None):
     """
     Makes scatter plot of two columns in a dataframe with names x and y.
 
@@ -32,14 +37,15 @@ def scatter_plot(df, x, y, ax=None, xlabel='X', ylabel='Y', title=''):
 
     
     # Get upper limit for plot
-    xmax = max(df[[x,y]].max().values)
-    xmax = np.ceil(xmax/10.)*10.
+    if not max_value:
+        max_value = max(df[[x,y]].max().values)
+        max_value = np.ceil(max_value/10.)*10.
 
     ax.plot(xv, yv, 'bo')
-    ax.plot([0,xmax],[0,xmax], color='0.4')
+    ax.plot([0, max_value], [0, max_value], color='0.4', zorder=0)
 
-    ax.set_xlim(0,xmax)
-    ax.set_ylim(0,xmax)
+    ax.set_xlim(0, max_value)
+    ax.set_ylim(0, max_value)
     ax.set_aspect('equal','box')
     
     ax.set_xlabel(xlabel)
@@ -51,6 +57,7 @@ def scatter_plot(df, x, y, ax=None, xlabel='X', ylabel='Y', title=''):
     ax.text( 0.05, 0.78, 'Bias: {:4.1f}'.format(bias(df,x,y)), transform=ax.transAxes )
     return
 
+
 def read_data():
     """
     Reads csv file containing precipitation along trajectories
@@ -60,23 +67,48 @@ def read_data():
                     9: 'SON', 10: 'SON', 11: 'SON', 12: 'DJF'}
     
     filepath = 'np_reanalysis_month_comparison.csv'
-    df = pd.read_csv(filepath, index_col=0)
-    df['Date'] = [dt.datetime.strptime(t,'%Y-%m-%d') for t in df['Date']] # Convert date string to datetime
+    df = pd.read_csv(filepath, index_col=0, header=0, parse_dates=['Date'])
     df['Season'] = [which_season[m] for m in df['Date'].dt.month] # Determine season
     return df
 
+
+def main(season=None, savefig=True):
+
+    traj = read_data()
+    if season:
+        traj = traj[traj['Season'] == season]
+        
     # Plotting
-fig, ax = plt.subplots(3, 2, figsize=(9,9))
-ax = ax.flatten()
+    fig, axes = plt.subplots(2, 3, figsize=(10,7))
     
-for ir, reanalysis in enumerate(['ERAI','CFSR','MERRA','MERRA2','JRA55']):
-    scatter_plot(traj, 'Pc', reanalysis+'_prectot', ax=ax[ir],
-                 xlabel='Observed (mm)',
-                 ylabel='Model (mm)',
-                 title=reanalysis)
+    for reanalysis, ax in zip(['ERAI', 'ERA5', 'CFSR', 'MERRA', 'MERRA2', 'JRA55'], axes.flatten()):
+        scatter_plot(traj, 'Pc', reanalysis+'_prectot', ax=ax,
+                     xlabel='Observed (mm)',
+                     ylabel='Model (mm)',
+                     title=reanalysis)
 
-fig.delaxes(ax[5])
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
 
-#fig.savefig('np_trajectory_reanalysis_scatter.png')
+    if season:
+        fileout = f'np_trajectory_reanalysis_scatter_{season}.png'
+    else:
+        fileout = 'np_trajectory_reanalysis_scatter_annual.png'
+    print (fileout)
+
+    if savefig:
+        fig.savefig(fileout)
+    else:
+        plt.show()
+        
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Generates scatter plot of monthly precipitation ' + \
+                                     'from North Pole drifting stations and reanalyses')
+    parser.add_argument('--season', type=str, default=None,
+                        help='Season to plot')
+    parser.add_argument('--savefig', action='store_false')
+    
+    args = parser.parse_args()
+    
+    main(season=args.season)

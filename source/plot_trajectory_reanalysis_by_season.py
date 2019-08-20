@@ -75,24 +75,24 @@ def main():
     traj = read_data()
 
     # Plotting
-    fig, ax = plt.subplots(4, 5, figsize=(15,9))
+    fig, ax = plt.subplots(4, 6, figsize=(15,9))
     ax = ax.flatten()
 
     plt.subplots_adjust(left=0.27, bottom=0.1, right=0.9, top=0.9, wspace=0.1, hspace=0.1)
 
-    reanalysis = ['ERAI','CFSR','MERRA','MERRA2','JRA55']
+    reanalysis = ['ERAI', 'ERA5', 'CFSR', 'MERRA', 'MERRA2', 'JRA55']
     season = ['DJF','MAM','JJA','SON']
     #for ir, reanalysis in enumerate(['ERAI','CFSR','MERRA','MERRA2','JRA55']):
     for ir, (ssn, rnls) in enumerate([(ssn, rnls) for ssn in season for rnls in reanalysis]):
         
-        if np.mod(ir,5) == 0:
+        if np.mod(ir,6) == 0:
             ylabel = 'Model (mm)'
             ylabel_visible=True
         else:
             ylabel = ' '
             ylabel_visible=False
             
-        if np.floor_divide(ir,5) == 3:
+        if np.floor_divide(ir,6) == 3:
             xlabel = 'Observed (mm)'
             xlabel_visible=True
         else:
@@ -108,16 +108,12 @@ def main():
                      xlabel_visible=xlabel_visible,
                      ylabel_visible=ylabel_visible)
 
-        #pos0 = ax[0].get_position()
+
     ty = 0.91
-    tx0 = 0.33
-    txd = 0.13
-    plt.figtext(tx0, ty, 'ERA-Interim', fontsize=15, horizontalalignment='center', figure=fig)
-    plt.figtext(tx0+(1*txd), ty, 'CFSR', fontsize=15, horizontalalignment='center', figure=fig)
-    plt.figtext(tx0+(2*txd), ty, 'MERRA', fontsize=15, horizontalalignment='center', figure=fig)
-    plt.figtext(tx0+(3*txd), ty, 'MERRA2', fontsize=15, horizontalalignment='center', figure=fig)
-    plt.figtext(tx0+(4*txd), ty, 'JRA55', fontsize=15, horizontalalignment='center', figure=fig)
-    
+    for ir, reanalysis in enumerate(['ERA-Interim', 'ERA5', 'CFSR', 'MERRA', 'MERRA2', 'JRA55']):
+        tx0 = 0.5*(ax[ir].get_position().x0 + ax[ir].get_position().x1)
+        plt.figtext(tx0, ty, reanalysis, fontsize=15, horizontalalignment='center', figure=fig)
+
     ty0 = 0.82
     tyd = 0.21
     for iy, ssn in enumerate(season):
@@ -125,7 +121,7 @@ def main():
                     rotation=90.)
         
     #plt.tight_layout()
-    plt.show()
+    #plt.show()
 
     fig.savefig('np_trajectory_reanalysis_scatter_by_season.png')
 

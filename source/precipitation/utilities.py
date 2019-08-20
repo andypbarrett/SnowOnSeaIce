@@ -10,7 +10,8 @@ import os
 import datetime as dt
 import calendar
 
-from constants import filepath, vnamedict, arctic_mask_region, accumulation_period_filepath
+from precipitation.constants import filepath, vnamedict, arctic_mask_region
+from precipitation.constants import accumulation_period_filepath, annual_total_filepath
 
 def _glob_precip_stats_dirpath(reanalysis):
     """
@@ -55,8 +56,6 @@ def make_filepath(reanalysis, variable, date, grid=None):
     returns - filepath string
     '''
 
-    from constants import filepath, vnamedict
-
     fp = os.path.join(filepath[reanalysis]['path'].format(vnamedict[reanalysis][variable]['name'], date.year, date.month),
                        filepath[reanalysis]['ffmt'].format(vnamedict[reanalysis][variable]['name'], date.strftime('%Y%m')))
 
@@ -70,7 +69,7 @@ def make_filepath(reanalysis, variable, date, grid=None):
     return fp
 
 def make_outfile(fili, reanalysis, variable, version=None):
-    from constants import vnamedict
+
     import re
 
     new_varname = {'PRECIP': '.PRECIP_STATS',
@@ -138,8 +137,6 @@ def read_month(fileGlob, reanalysis, variable):
 
     Need to add time dimension if I want to do something fancy
     '''
-
-    from constants import vnamedict
 
     vname = vnamedict[reanalysis][variable]
 
@@ -301,7 +298,7 @@ def make_test_dataArray():
     return da
 
 
-def read_region_mask():
+def read_region_mask(grid='Nh50km'):
     """
     Reads the Nh50km Arctic region mask and puts it into a xarray DataArray compatable with
     the precip_stats Dataset
@@ -347,11 +344,43 @@ def load_annual_accumulation(reanalysis):
     # Modify coordinate names to match other files
     # This will be fixed in a later version
     if reanalysis == 'CFSR':
-        ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
+        print (ds)
+        #ds.rename({'row': 'x', 'col': 'y'}, inplace=True)
 
     return ds
     
 
+def load_annual_total(reanalysis):
+    """Loads annual total precipitation stats"""
+    ds = xr.open_dataset(annual_total_filepath[reanalysis])
 
+    return ds
+
+
+def read_latlon_region_mask():
+
+    mask_path = ('/oldhome/apbarret/data/seaice_indices/'
+                 'Arctic_region_mask_Meier_AnnGlaciol2007_latlon.tif')
+    mask = xr.open_rasterio(mask_path)[0,:,:]
+    mask = mask.rename({'x': 'longitude', 'y': 'latitude'})
+    #mask.values = mask.values[:,::-1]
+    return mask
+
+
+def get_central_arctic_mask(grid='Nh50km'):
+    """Loads the Arctic region mask and selects central Arctic regions"""
+    if grid == 'Nh50km':
+        mask = read_region_mask()
+    elif grid == 'latlon':
+        mask = read_latlon_region_mask()
+    else:
+        raise ValueError("Unknown grid")
     
+    central_arctic = mask.where((mask == arctic_mask_region['CENTRAL_ARCTIC']) | \
+                                (mask == arctic_mask_region['BEAUFORT']) | \
+                                (mask == arctic_mask_region['CHUKCHI']) | \
+                                (mask == arctic_mask_region['LAPTEV']) | \
+                                (mask == arctic_mask_region['EAST_SIBERIAN']))
+    return central_arctic
+
 

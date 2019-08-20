@@ -7,7 +7,7 @@ import numpy as np
 import cartopy.crs as ccrs
 import xarray as xr
 
-from constants import accumulation_period_filepath
+from precipitation.constants import accumulation_period_filepath
 
 # projection class
 class EASE_North(ccrs.Projection):
@@ -73,7 +73,8 @@ class Nh50km(Grid):
     def __init__(self):
 
         grid_params = {
-            'extent': [-9036842.762500, 9036842.762500, -9036842.762500, 9036842.762500],
+            'extent': [-9036842.762500, 9036842.762500,
+                       -9036842.762500, 9036842.762500],
             'limit': 3000000,
             'origin': 'upper',
             'projection': EASE_North()
@@ -107,7 +108,8 @@ def load_data(field, transform='none'):
     return ds
 
         
-def imshow_Nh50km(var, nrows, ncols, index, norm=None, cmap=None, text=None):
+def imshow_Nh50km(var, nrows, ncols, index, norm=None, cmap=None, text=None,
+                  coastline_color='black', add_coastline=True):
     """Plots an Nh50km grid"""
 
     ax = plt.subplot(nrows, ncols, index,
@@ -121,7 +123,8 @@ def imshow_Nh50km(var, nrows, ncols, index, norm=None, cmap=None, text=None):
                     origin=Nh50km().origin,
                     extent=Nh50km().extent,
                     transform=Nh50km().projection)
-    ax.coastlines(color='0.3')
+    if add_coastline:
+        ax.coastlines(color=coastline_color)
 
     if text:
         ax.text(0.05, 0.95, text,

@@ -26,6 +26,10 @@ def make_table(verbose=False):
 
     table = pd.concat(stat_dict, axis=1, join='outer')
 
+    # Bogdanova et al drop NP14 because values are too high
+    # (Bogdanova et al 2002)
+    table = table.drop('np14', axis=1)
+    
     return table
     
 if __name__ == "__main__":
@@ -33,6 +37,6 @@ if __name__ == "__main__":
 
     # Get number of station months
     # Some years have more months than published
-    nmonths = df[df.index >= '1956'].resample('A').count().sum(axis=1)
+    nmonths = table[table.index >= '1956'].resample('A').count().sum(axis=1)
     
     print (table)
