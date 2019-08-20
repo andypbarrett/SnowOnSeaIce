@@ -1,3 +1,24 @@
+import numpy as np
+import pandas as pd
+
+
+# Empirical parameter from B02 Table 1
+A0dict = {
+    '': 0.0,
+    'snow': 0.033,
+    'mixed': 0.017,
+    'rain': 0.008,
+    }
+
+
+def get_A0(ptype, tair):
+    """Returns the empirical parameter from Table 1 based on ptype and air temperature
+    For now, I just use snow, mixed and rain types.  The table includes entry for drizzle.
+    """
+    result = ptype.map(A0dict)
+    result[(ptype == 'rain') & (tair >= 2.)] = 0.004
+    return result
+
 
 def decode_ptype(ptype):
     """Decodes precipitation type code to string"""
@@ -6,6 +27,7 @@ def decode_ptype(ptype):
                   3: 'rain',}
     return ptype_dict.get(ptype,'')
 
+
 def get_ptype(ptype):
     """
     Returns precipitation type string for pandas series of precipitation type codes
@@ -13,43 +35,30 @@ def get_ptype(ptype):
     ptype - pandas series
     """
     return ptype.map(decode_ptype)
-    
-def standard_wetting(ptype):
-   """Returns standard wetting correcting applied to NPSNOW precipitation"""
-   wetting_delta = {'snow': 0.2,
-                    'mixed': 0.2,
-                    'rain': 0.1}
-   return wetting_delta.get(ptype, 0.0)
 
-def get_standard_wetting_correction(ptype):
-    """
-    Returns standard wetting correction for a Pandas series
-    Uses the Pandas.Series.map method
-
-    ptype - pandas series
-    """
-    return ptype.map(standard_wetting)
 
 def tetens(tair):
     """Returns saturation water vapour pressure in hPa"""
     return 10.*0.61078*np.exp( 17.27*tair / (tair + 237.3) )
     
+
 def partial_pressure_wv(rh, tair):
     """Returns partial pressure of water vapour"""
     return rh*tetens(tair)/100.
 
+
 def mu_coef(slp, tair, ea):
     """
-    Calculates coeficient \mu: equation 6
+    Calculates coeficient \mu: equation 3
 
     slp - sea level pressure (hPa)
     tair - air temperature (deg. C)
     ea - partial pressure of water vapour hPa
     """
-
     return 0.273*slp**2 / ( (273-tair)*(slp+0.4*ea) )
 
-def wind_speed(Uh, sdepth):
+
+def wind_speed(Uh, h_snow):
     """
     Calculates gauge orifice height wind speed using equation 4 from B02.  
     Following B02, assume m(A) = 1 in equation 4.
@@ -65,26 +74,40 @@ def wind_speed(Uh, sdepth):
     
     return Uh * np.log( (h_gauge - h_snow)/z0 ) / np.log( (h_anono - h_snow)/z0 )
 
-def get_deltaWp(df):
-    """Returns wetting correction based on ptype"""
-    return [deltaWp[ptype[pt]] if pa > 0. else 0. for pa, pt in zip(df['PRECIP'],df['PTYPE'])]
 
 def aerodynamic_coefficient(df):
     """Calculate the aerodynamic coefficient for precipitation correction"""
-
-    A0 = { # Empirical parameter for aerodynamic coefficient
-          'rain': 0.008,
-          'snow': 0.033,
-          'mixed': 0.017,
-          }
-
     ea = partial_pressure_wv(df['RH'], df['TAIR'])
     mu = mu_coef(df['SLP'], df['TAIR'], ea)
-
     Uh = wind_speed(df['WSPD'], df['SDEPTH'])
+    A0 = get_A0(df['PTYPE'])
+    return 1 + A0 * mu**2 * Uh**2
 
-    return 1 + A0[ptype[df['PTYPE']]]* mu**2 * Uh**2
 
+def standard_wetting_correction(ptype):
+    """
+    Returns standard wetting correction for a Pandas series
+    Uses the Pandas.Series.map method
+
+    ptype - pandas series of precipitation type strings
+    """
+    standard_wetting = {
+        '': 0.0,
+        'snow': 0.2,
+        'mixed': 0.2,
+        'rain': 0.1
+    }
+    return ptype.map(standard_wetting)
+
+
+def adjust_standard_wetting_correction(df):
+    """Subtracts the standard wetting adjustment from archived precipitation
+    Observers applied a wetting correction to measured precipitation
+    See B02 and Colony for details"""
+    df['Parch'] = df['PRECIP'] - standard_wetting_correction(df['PTYPE'])
+    df['Parch'] = df['Parch'].where(df['Parch'] >= 0., 0.)
+    return df
+    
 def liquid_delta(rh):
     """
     Wetting, evaporation, condensation and trace correction for
@@ -94,6 +117,33 @@ def liquid_delta(rh):
         return 0.069*np.log(100-rh) + 0.009
     else:
         return 0.1
+
+
+def solid_delta(rh):
+    """
+    Wetting, evaporation, condensation and trace correction for 
+    solid precipitation
+    
+    rh - relative humidity
+    """
+    if rh < 95.:
+        return 0.097*np.log(100 - rh) - 0.15
+    else:
+        return -0.2
+
+
+def mixed_delta(rh):
+    """
+    Wetting, evaporation, condensation and trace correction for 
+    mixed precipitation
+    
+    rh - relative humidity
+    """
+    if rh < 95.:
+        0.158 * np.log(100 - rh) - 0.449
+    else:
+        return -0.2
+
 
 def bias_correction_func(ptype):
     
@@ -110,14 +160,17 @@ def bias_correction(rh, ptype):
     funcs = get_bias_correction_func(ptype)
     
     correction = [f(v) for f, v in zip(funcs.values, rh.values)]
-    result = pd.Series(correction, index=ptype.index
+    result = pd.Series(correction, index=ptype.index)
     return result
 
 def bogdanova(df):
 
+    # Convert numerical P-type to string
+    df['PTYPE'] = get_ptype(df['PTYPE'])
+    
     # Remove standard correction for wetting loss
     # From Colony et al (1998) for rain deltaPw = 0.1 mm, for snow and mixed precipitation deltaPw = 0.2
-    df['Parch'] = df['PRECIP'] - get_deltaWp(df)
+    df = adjust_standard_wetting_correction(df)
     
     # Calculate value of aerodynamic coeficient (eq 2 - 5)
 
@@ -125,3 +178,17 @@ def bogdanova(df):
     # trace precipitation (eq 6 - 8)
 
     # calculate false precipitation 
+    return df       
+
+def main():
+    filepath = '~/data/NPSNOW/my_combined_met/npmet_22_combined.csv'
+    df = pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
+    df_corr = bogdanova(df)
+    print (df_corr)
+    
+    return -1
+
+
+if __name__ == "__main__":
+    main()
+    
