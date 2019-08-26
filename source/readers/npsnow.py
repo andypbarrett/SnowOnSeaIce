@@ -11,7 +11,7 @@ import re
 import os
 import glob
 
-def read_precip(fili):
+def read_precip(fili, set_noprecip_to_nan=True):
     """
     Reader for precipitation files contained in the NPSNOW data set
 
@@ -29,9 +29,14 @@ def read_precip(fili):
     Pandas dataframe containg precipitation data for one station
     """
 
-    df = pd.read_csv(fili, header=None, delim_whitespace=True,
-                     #na_values={'amount': -9.9, 'type': -9}, 
-                     names=['statid','month','day','year','amount','type'])
+    if set_noprecip_to_nan:
+        df = pd.read_csv(fili, header=None, delim_whitespace=True,
+                         na_values={'amount': -9.9, 'type': -9}, 
+                         names=['statid','month','day','year','amount','type'])
+    else:
+        df = pd.read_csv(fili, header=None, delim_whitespace=True,
+                         names=['statid','month','day','year','amount','type'])
+        
 
     isday = [row[1]['day'] <= \
              calendar.monthrange( int(row[1]['year']),int(row[1]['month']) )[1] \
@@ -44,7 +49,7 @@ def read_precip(fili):
                 for row in df.iterrows()] # Reset index to date
 
     # Assumes zero precipitation/dry days are marked as -9.9, set to zero
-    df = df.where(df > 0., 0.0)
+    #df = df.where(df > 0., 0.0)
     
     return df[['statid','amount','type']]
 
