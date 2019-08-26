@@ -12,7 +12,7 @@ import matplotlib.dates as mdates
 
 import readers.npsnow as npsnow
 
-NPSNOW_PATH = '/home/apbarret/data/NPSNOW'
+from constants import DATADIR as NPSNOW_PATH
 
 def get_station_list():
     """Returns list of station ids, extracted from met filenames"""
@@ -22,7 +22,7 @@ def get_station_list():
 
 def met_filename(sid):
     """Returns met file name for station id"""
-    return os.path.join(NPSNOW_PATH,'met','metnp_{:2s}.dat'.format(sid))
+    return os.path.join(NPSNOW_PATH,'met','metnp_{:2s}.dat'.format(sid.zfill(2)))
 
 def precip_filelist(sid):
     """Returns list of precip files for station id"""
@@ -101,7 +101,7 @@ def plot_station_met(df, title='', pngfile=None):
     if pngfile:
         fig.savefig(pngfile)
 
-    plt.close(fig)
+    #plt.close(fig)
     
 def main(doplot=False, nowrite=False):
 
