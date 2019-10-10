@@ -39,7 +39,7 @@ def load_reanalysis(reanalysis, year):
     """
     ds = read_daily_precip(reanalysis, f'{year}-01-01', f'{year}-12-31', grid='Nh50km')
     da = ds[VARNAME.get(reanalysis, 'PRECTOT')]
-    da = da * SCALE[reanalysis]  # Convert meters to mm
+    da = da * SCALE[reanalysis]  # Convert to mm
     return da
 
 
@@ -49,8 +49,8 @@ def load_trajectory(id):
 
     filepath = os.path.join(dirpath, f'position.daily.{id:02d}') 
     trajectory = pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
-    trajectory['Date'] = trajectory.index  # Add Date so that trajectory_to_indices works
-    trajectory['PRECTOT'] = np.nan
+    trajectory['Date'] = [date.replace(hour=0, minute=0, second=0, microsecond=0)
+                          for date in trajectory.index]  # Add Date so that trajectory_to_indices works
     return trajectory
 
 
@@ -94,7 +94,7 @@ def main(reanalysis, verbose=False):
             # Extract trajectory time series
             if verbose: print ('Extracting points...')
             points = da.sel(time=it, x=ix, y=iy, method='nearest')
-            #trajectory['PRECTOT'] = points.to_series()
+            trajectory['PRECTOT'] = points.to_series()
             
             da.close()
 
