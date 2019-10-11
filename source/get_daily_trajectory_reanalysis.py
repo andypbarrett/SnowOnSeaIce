@@ -32,13 +32,24 @@ SCALE = {
     'JRA55': 1.
 }
 
-def load_reanalysis(reanalysis, year):
-    """Loads daily reanalysis for a given year 
+REANALYSIS_FIRST_YEAR =  {
+    'ERA5': '1979',
+    'ERAI': '1979',
+    'MERRA': '1980',
+    'MERRA2': '1980',
+    'CFSR': '1979',
+    'JRA55': '1979'
+}
+
+
+def load_reanalysis(reanalysis, first_date, last_date):
+    """Loads daily reanalysis for a given period
 
     Returns a DataArray of total precipitation scaled to mm
     """
-    ds = read_daily_precip(reanalysis, f'{year}-01-01', f'{year}-12-31', grid='Nh50km')
+    ds = read_daily_precip(reanalysis, first_date, last_date, grid='Nh50km')
     da = ds[VARNAME.get(reanalysis, 'PRECTOT')]
+    da.name = 'TOTPREC'
     da = da * SCALE[reanalysis]  # Convert to mm
     return da
 
@@ -46,12 +57,49 @@ def load_reanalysis(reanalysis, year):
 def load_trajectory(id):
     """Loads a trajectory for a given drifting station.  Adds Date and PRECTOT columns"""
     dirpath = '/home/apbarret/data/NPSNOW/updated_position'
-
     filepath = os.path.join(dirpath, f'position.daily.{id:02d}') 
     trajectory = pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
-    trajectory['Date'] = [date.replace(hour=0, minute=0, second=0, microsecond=0)
-                          for date in trajectory.index]  # Add Date so that trajectory_to_indices works
     return trajectory
+
+
+def trajectory_time_index(trajectory):
+    '''Returns a DataArray of time indices compatible with reanalysis time coordinates, 
+    which is <date> 00:00:00 rather than <date> 12:00:00
+
+    trajectory - Pandas Dataframe
+    '''
+    return xr.DataArray([date.replace(hour=0, minute=0, second=0, microsecond=0)
+                         for date in trajectory.index], dims=['time'])
+
+
+def extract_trajectory_precip(reanalysis_df, trajectory, verbose=False):
+    '''
+    Extracts Total Precipitation along a trajectory
+
+    reanalysis - name of reanalysis
+    trajectory - dataframe containing trajectory lat-lon coords indexed by date
+
+    Returns: Pandas dataframe with trajectory coordinates and total precipitation
+             indexed by date
+    '''
+
+    '''    trajectory = load_trajectory(station)
+    trajectory = trajectory.loc[reanalysis_first_year[reanalysis]:]  # Subset trajectory to years
+                                                                     # after 1979 or 1980
+    reanalysis_df = load_reanalysis(reanalysis,
+                                    start_date = trajectory.index[0].strftime('%Y-%m-%d'),
+                                    last_date = trajectory.index[-1].strftime('%Y-%m-%d'))
+    '''
+
+    _, ix, iy = trajectory_to_indices(trajectory)
+    it = trajectory_time_index(trajectory)
+    
+    points = reanalysis_df.sel(time=it, x=ix, y=iy, method='nearest').to_series()
+    points.index = [date.replace(hour=12, minute=0, second=0, microsecond=0)
+                    for date in points.index]  # Convert points index back to index
+                                               # compatable with trajectory
+
+    return trajectory.join(points)
 
 
 def main(reanalysis, verbose=False):
@@ -63,13 +111,6 @@ def main(reanalysis, verbose=False):
     last_date  - last date to read YYYY-MM-DD
     """
 
-    # Reanalyses only available after 1979, except for MERRA2
-    # which is available after 1980
-    if reanalysis == 'MERRA2':
-        first_year = 1980
-    else:
-        first_year = 1979
-
     stations = [22,24,25,26,28,29,30,31]
     
     for id in stations:
@@ -77,34 +118,28 @@ def main(reanalysis, verbose=False):
         if verbose: print ('Getting prectot for {:d}'.format(id))
         
         # Read trajectory
+        if verbose: print ('  Getting trajectory coordinates...')
         trajectory = load_trajectory(id)
+        trajectory = trajectory.loc[REANALYSIS_FIRST_YEAR[reanalysis]:]
+        
+        # Read reanalysis cube
+        if verbose: print ('  Reading reanalysis data...')
+        reanalysis_df = load_reanalysis(reanalysis,
+                                        trajectory.index[0].strftime('%Y-%m-%d'),
+                                        trajectory.index[-1].strftime('%Y-%m-%d'),
+        )
 
-        # Get unique list of years after 1979
-        years = [y for y in list( set( trajectory.Date.dt.year ) ) if y >= first_year]
-
-        for y in years:
-            
-            # Get indices for time, lat and lon
-            it, ix, iy = trajectory_to_indices(trajectory[str(y)])
-
-            # Read reanalysis cube
-            if verbose: print ('Reading reanalysis data for {:4d}...'.format(y))
-            da = load_reanalysis(reanalysis, y)
-            
-            # Extract trajectory time series
-            if verbose: print ('Extracting points...')
-            points = da.sel(time=it, x=ix, y=iy, method='nearest')
-            trajectory['PRECTOT'] = points.to_series()
-            
-            da.close()
-
+        if verbose: print ('  Extracting points...')
+        precip = extract_trajectory_precip(reanalysis_df, trajectory)
         # Set precipitation values (normally 10**-9) to zero
-        trajectory['PRECTOT'].where(trajectory['PRECTOT'] < 0., 0.)
+        precip['TOTPREC'].where(precip['TOTPREC'] > 0., 0., inplace=True)
+            
+        reanalysis_df.close()
         
         # For Testing: plot time series
         fileout = f'{reanalysis.lower()}.prectot.daily.np{id}.csv'
-        if verbose: print (f'Writing PRECTOT for {reanalysis} for trajectory NP{id:02d} to {fileout}')
-        trajectory['PRECTOT'].to_csv(fileout)
+        if verbose: print (f'  Writing TOTPREC for {reanalysis} for trajectory NP{id:02d} to {fileout}')
+        precip['TOTPREC'].to_csv(fileout)
 
         
 if __name__ == "__main__":

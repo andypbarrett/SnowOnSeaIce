@@ -34,8 +34,10 @@ def trajectory_to_indices(df):
     row = np.floor(row).astype(int)
     ix = xr.DataArray(row, dims=['time'])
     iy = xr.DataArray(col, dims=['time'])
-    #it = xr.DataArray(df.index.values, dims=['time'])
-    it = xr.DataArray(df.Date.values, dims=['time'])
+    if 'Date' in df.columns:
+        it = xr.DataArray(df.Date.values, dims=['time'])
+    else:
+        it = None
     return it, ix, iy
 
 def trajectory_filepath(id):
