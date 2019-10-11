@@ -20,9 +20,9 @@ figures/current/arctic_regional_precTot.png
 source/plot_arctic_regional_precip_stats.py
 
 ## Figure 6
-figures/current/drifting_station_seasonal_cycle_with_reanalysis_for_trajectories.png
+figures/current/drifting_station_seasonal_cycle_with_reanalysis_for_trajectories_from_daily.png
 source/plot_drifting_station_seasonal_cycle.py
-*Need to check how input file created*
+
 
 ## Figure 7
 figures/current/central_arctic_daily_precipitation_cdf_accumulation_period.png
@@ -40,7 +40,12 @@ figures/current/accumulation_precip_stats_for_npsnow_region.png
 ../misc/arctic_precipitation.accumulation_period.climatology.fwetdays.png
 ./source/precipitation/plot_precip_stats.py
 
+
 ## Figure 11
+plot_annual_precip_with_obs.py - dumped from ipynb needs cleaning up
+
+
+## Figure 12
 figures/current/yang_trajectory_reanalysis_bias.png
 notebooks/plot_reanalysis_precip_bias_yang_ensemble.py.ipynb
 
