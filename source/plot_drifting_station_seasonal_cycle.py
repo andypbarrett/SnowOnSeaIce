@@ -26,19 +26,13 @@ def get_yang_climatology():
     return df.groupby(df.MM).mean().Pc
 
                         
-def read_data():
+def read_reanalysis_climatology():
     """
-    Reads csv file containing precipitation along trajectories
+    Reads csv file containing reanalysis precipitation climatology along trajectories
     """
-    which_season = {1: 'DJF', 2: 'DJF', 3: 'MAM', 4: 'MAM',
-                    5: 'MAM', 6: 'JJA', 7: 'JJA', 8: 'JJA',
-                    9: 'SON', 10: 'SON', 11: 'SON', 12: 'DJF'}
-
     dirpath = '/home/apbarret/data/SnowOnSeaIce/reanalysis_timeseries'
-    filepath = 'np_reanalysis_month_comparison.csv'
+    filepath = 'np_trajectory_prectot_climatology_from_reanalysis.csv'
     df = pd.read_csv(os.path.join(dirpath,filepath), index_col=0)
-    df['Date'] = [dt.datetime.strptime(t,'%Y-%m-%d') for t in df['Date']] # Convert date string to datetime
-    df['Season'] = [which_season[m] for m in df['Date'].dt.month] # Determine season
     return df
 
 def main():
@@ -47,10 +41,7 @@ def main():
     from Yang and Bogdanova.
     """
 
-    P_df = read_data()
-    P_df = P_df.loc[(P_df['Date'].dt.year >= 1980), :]
-    P_mon = P_df.groupby(P_df['Date'].dt.month).mean()
-    P_mon = P_mon.drop(['Lat','Lon','NP','Pc'], axis=1)
+    P_mon = read_reanalysis_climatology()
     P_mon['Pyang'] = get_yang_climatology()
     P_mon['Pbog'] = get_bogdanova_monthly().P
 
@@ -70,13 +61,9 @@ def main():
             align='center', label="Bogdanova")
 
     reanalyses = ['ERAI', 'ERA5', 'CFSR', 'JRA55', 'MERRA2','MERRA']
-    symbols = ['o','v','s','X','*']
     for r in reanalyses:
-        ax.plot(x, P_mon[r+'_prectot'], marker=None, linestyle='-',
+        ax.plot(x, P_mon[r], marker=None, linestyle='-',
                 linewidth=2, label=r, color=reanalysis_color[r])
-#        ax.plot(x, P_mon[r+'_prectot'], marker=s, linestyle='-',
-#                markersize=15, linewidth=1.5, label=r)
-#        ax.plot(x, P_mon[r+'_prectot'], linestyle='-', linewidth=3, label=r)
         
     ax.set_ylabel('mm', fontsize=20)
 
