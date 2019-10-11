@@ -6,9 +6,12 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import datetime as dt
+import os
 
 from apbplotlib.colors import reanalysis_color
 from readers.npsnow import read_yang
+
+DATA_DIR = '/home/apbarret/data/SnowOnSeaIce/reanalysis_timeseries'
 
 def get_bogdanova_monthly():
     """Returns monthly corrected precipitation from Bogdanova et al.  2002."""
@@ -27,7 +30,8 @@ def read_reanalysis_climatology(variable='prectot'):
     """
     Reads csv file containing precipitation along trajectories
     """
-    filepath = 'reanalysis_month_climatology_for_npsnow.csv'
+    filepath = os.path.join(DATA_DIR,
+                            'reanalysis_month_climatology_for_npsnow.csv')
     df = pd.read_csv(filepath, index_col=0, header=[0,1])
     df = df.loc[:, (slice(None), variable)]
     df.columns = df.columns.droplevel(level=1)  # Do not need variable name 
