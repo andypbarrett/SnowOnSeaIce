@@ -69,7 +69,7 @@ def plot_range(x, ymin, ymax, yav, c, ax):
 
 
 def make_figure11(reanalysis, yang_annual, bogd_annual,
-                  fileout='arctic_precip_figure11.png'):
+                  fileout='arctic_precip_with_obs.png'):
     
     fig, ax = plt.subplots(figsize=(10,6))
 
@@ -151,8 +151,6 @@ def make_figure11(reanalysis, yang_annual, bogd_annual,
 
 def main():
     
-    fileout = 'annual_precipitation_reanalysis_with_obs.eps'
-    
     reanalysis = load_reanalysis()
     
     bogd_annual = read_bogdanova(bogd_path)
@@ -162,7 +160,8 @@ def main():
     yang_annual = table.mean(axis=1).resample('AS').sum().where(table.count(axis=1).resample('AS').sum() >= 12)
     yang_annual = yang_annual['1979':]
 
-    make_figure11(reanalysis, yang_annual, bogd_annual)
+    fileout = 'annual_reanalysis_precip_with_obs_for_arctic_domain.png'
+    make_figure11(reanalysis, yang_annual, bogd_annual, fileout=fileout)
     
 if __name__ == "__main__":
     main()
