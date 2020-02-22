@@ -328,6 +328,20 @@ def read_yang_updated(fili):
     df['Date'] = [dt.datetime.strptime(t,'%Y-%m-%d') for t in df.Date.values]
     return df
 
+def read_my_combined(fili):
+    '''
+    Reads combined meteorological data files created by apbarret@nsidc.org
+    
+    Arguments
+    ---------
+    fili - file path
+    
+    Returns
+    -------
+    Pandas dataframe
+    '''
+    df = pd.read_csv(fili, index_col=0, header=0, parse_dates=True)
+    return df
 
 
 
