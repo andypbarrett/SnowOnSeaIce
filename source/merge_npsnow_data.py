@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import readers.npsnow as npsnow
-
+import trajectory
 from constants import DATADIR as NPSNOW_PATH
 
 def get_station_list():
@@ -66,6 +66,38 @@ def merge_one_station(sid, set_noprecip=True):
     # Calculate wind speed at gauge height
     df['Ug'] = df.apply(wind_at_gauge, axis=1)
 
+    return df
+
+
+def combine_met_precip_and_coords(station):
+    '''
+    Merges met and precip data, and replaces coordinates with updated coordinates
+    
+    Coordinates are interpolated if they are missing
+    
+    station - station id
+    
+    Returns: pandas dataframe
+    '''
+    
+    print (station)
+    
+    df = merge_one_station(str(station), set_noprecip=False)  # Merge met and precip data
+    df.index = df.index.shift(12, freq='H')  # Assign daily met to 12:00:00h
+
+    df_pos = npsnow.read_position(os.path.join(NPSNOW_PATH, 'updated_position', f'position.{station}'))
+    df_pos = df_pos.sort_index()
+    # Need to revisit updated_coordinates and remove duplicates, but deal with it here for now
+    df_pos = df_pos.drop_duplicates(keep='first')
+    df_pos = df_pos[~df_pos.index.duplicated(keep=False)]  # Handles case where index duplicated but values are different
+
+    waypoints = trajectory.to_waypoints(df_pos)
+    np_drift = trajectory.Trajectory(waypoints)
+    df_np_drift = np_drift.interpolate_by_date(df.index).to_dataframe()
+    
+    df = df.join(df_np_drift, rsuffix='_new')
+    df = df.drop(['Latitude', 'Longitude'], axis=1).rename({'Longitude_new': 'Longitude', 'Latitude_new': 'Latitude'}, axis=1)
+    
     return df
 
 
@@ -145,18 +177,11 @@ def plot_station_met(df, title='', pngfile=None):
     
 def main(doplot=False, nowrite=False):
 
-    station_id = get_station_list()
-
-    # Get snowstake data for snow depth
-    snwstk_path = '/home/apbarret/data/NPSNOW/snow/measured/snwstake.dat'
-    snwstk = npsnow.read_snowstake(snwstk_path)
+    station_id = [sid for sid in get_station_list() if (int(sid) > 2)  & (int(sid) != 27)]  # NP1 and NP2 do not have sufficient data
 
     for sid in station_id:
-        # Skip first 2 stations
-        if int(sid) > 2:
-            df = merge_one_station(sid)
 
-            df['SDEPTH'] = snwstk[snwstk.station == int(sid)].snowdepth
+            df = combine_met_precip_and_coords(sid)
 
             if doplot:
                 pngfile = os.path.join(NPSNOW_PATH,'my_combined_met',
