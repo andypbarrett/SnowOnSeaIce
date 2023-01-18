@@ -6,13 +6,14 @@ import os
 import glob
 import re
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import readers.npsnow as npsnow
-
-NPSNOW_PATH = '/home/apbarret/data/NPSNOW'
+import trajectory
+from constants import DATADIR as NPSNOW_PATH
 
 def get_station_list():
     """Returns list of station ids, extracted from met filenames"""
@@ -20,29 +21,100 @@ def get_station_list():
     id = [re.search('(?<=metnp_)\d{2}',f).group(0) for f in sorted(filelist)]
     return id
 
+
 def met_filename(sid):
     """Returns met file name for station id"""
-    return os.path.join(NPSNOW_PATH,'met','metnp_{:2s}.dat'.format(sid))
+    return os.path.join(NPSNOW_PATH,'met','metnp_{:2s}.dat'.format(sid.zfill(2)))
+
 
 def precip_filelist(sid):
     """Returns list of precip files for station id"""
     filelist = glob.glob(os.path.join(NPSNOW_PATH, 'precip', 'np_{:2s}_??.pre'.format(sid)))
     return sorted(filelist)
 
-def get_precip(sid):
-    """Reads a list of precip files and concatenates them"""
-    return pd.concat([npsnow.read_precip(f) for f in precip_filelist(sid)])
-    
-def merge_one_station(sid):
-    """Reads met and precip files, merges files, writes to csv"""
 
-    met = npsnow.read_met(met_filename(sid))
-    metDay = met.resample('D').mean()
-    preDay = get_precip(sid)
+def get_precip(sid, set_noprecip_to_nan=True):
+    """Reads a list of precip files and concatenates them"""
+    return pd.concat([npsnow.read_precip(f, set_noprecip_to_nan=set_noprecip_to_nan) for f in precip_filelist(sid)])
+
+
+def merge_one_station(sid, set_noprecip=True):
+    """Reads met and precip files, merges files, writes to csv
     
-    merged_df = pd.concat([metDay,preDay], axis=1, sort=False)
-    merged_df = merged_df.rename({'amount':'PRECIP', 'type':'PTYPE'}, axis=1)
-    return merged_df
+    sid - string containing station id
+    
+    set_noprecip - boolean to set missing  precip amount and type values (-9.9 and -9) to NaN
+                   default (True) 
+    """
+    met = npsnow.read_met(met_filename(sid))
+    precDay = get_precip(sid, set_noprecip_to_nan=set_noprecip)
+    snowDay = get_snowdepth(sid)
+
+    snowDay = snowDay.where(snowDay.notnull(), 0.)  # Set daily snow depth to 0. if NaN 
+
+    # Convert to daily metrics
+    metDay = met.resample('D').mean()
+    metDay['TMIN'] = met['TAIR'].resample('D').min()
+    metDay['TMAX'] = met['TAIR'].resample('D').max()
+
+    # Merge data
+    df = pd.concat([metDay, precDay, snowDay], axis=1, sort=False)
+    df = df.rename({'amount': 'PRECIP', 'type': 'PTYPE', 'snowdepth': 'SDEPTH'}, axis=1)
+    df['Station_ID'] = df['Station_ID'].fillna(df.statid)
+    df = df.drop('statid', axis=1)  # Drop duplicate column
+
+    # Calculate wind speed at gauge height
+    df['Ug'] = df.apply(wind_at_gauge, axis=1)
+
+    return df
+
+
+def combine_met_precip_and_coords(station):
+    '''
+    Merges met and precip data, and replaces coordinates with updated coordinates
+    
+    Coordinates are interpolated if they are missing
+    
+    station - station id
+    
+    Returns: pandas dataframe
+    '''
+    
+    print (station)
+    
+    df = merge_one_station(str(station), set_noprecip=False)  # Merge met and precip data
+    df.index = df.index.shift(12, freq='H')  # Assign daily met to 12:00:00h
+
+    df_pos = npsnow.read_position(os.path.join(NPSNOW_PATH, 'updated_position', f'position.{station}'))
+    df_pos = df_pos.sort_index()
+    # Need to revisit updated_coordinates and remove duplicates, but deal with it here for now
+    df_pos = df_pos.drop_duplicates(keep='first')
+    df_pos = df_pos[~df_pos.index.duplicated(keep=False)]  # Handles case where index duplicated but values are different
+
+    waypoints = trajectory.to_waypoints(df_pos)
+    np_drift = trajectory.Trajectory(waypoints)
+    df_np_drift = np_drift.interpolate_by_date(df.index).to_dataframe()
+    
+    df = df.join(df_np_drift, rsuffix='_new')
+    df = df.drop(['Latitude', 'Longitude'], axis=1).rename({'Longitude_new': 'Longitude', 'Latitude_new': 'Latitude'}, axis=1)
+    
+    return df
+
+
+def get_snowdepth(sid):
+    """Returns snow depth for a given station"""
+    snowstk_filename = os.path.join(NPSNOW_PATH, 'snow', 'measured', 'snwstake.dat')
+    snowDay = npsnow.read_snowstake(snowstk_filename)
+    return snowDay[snowDay.station == int(sid)].snowdepth
+
+
+def wind_at_gauge(x):
+    """Reduces 10 m wind speed to wind at gauge height orifice"""
+    H = 10.  # height of anenometer
+    hg = 2.  # height of gauge orifice
+    z0 = 0.01  # Roughness parameter of snow surface
+    return x.WSPD * np.log10((hg- x.SDEPTH*0.01)/z0) / np.log10(H/z0)
+
 
 def myFmtr(v, pos=None):
     d = mdates.num2date(v)
@@ -101,22 +173,15 @@ def plot_station_met(df, title='', pngfile=None):
     if pngfile:
         fig.savefig(pngfile)
 
-    plt.close(fig)
+    #plt.close(fig)
     
 def main(doplot=False, nowrite=False):
 
-    station_id = get_station_list()
-
-    # Get snowstake data for snow depth
-    snwstk_path = '/home/apbarret/data/NPSNOW/snow/measured/snwstake.dat'
-    snwstk = npsnow.read_snowstake(snwstk_path)
+    station_id = [sid for sid in get_station_list() if (int(sid) > 2)  & (int(sid) != 27)]  # NP1 and NP2 do not have sufficient data
 
     for sid in station_id:
-        # Skip first 2 stations
-        if int(sid) > 2:
-            df = merge_one_station(sid)
 
-            df['SDEPTH'] = snwstk[snwstk.station == int(sid)].snowdepth
+            df = combine_met_precip_and_coords(sid)
 
             if doplot:
                 pngfile = os.path.join(NPSNOW_PATH,'my_combined_met',
