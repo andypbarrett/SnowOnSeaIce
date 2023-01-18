@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import datetime as dt
+import os
 
 def rmse(df,x,y):                                                    
     return ( (df[x] - df[y])**2 ).mean()**0.5
@@ -73,7 +74,8 @@ def read_data():
     """
     Reads csv file containing precipitation along trajectories
     """
-    filepath = 'np_reanalysis_month_comparison.csv'
+    filepath = os.path.join('/home/apbarret/data/SnowOnSeaIce/reanalysis_timeseries/',
+                            'np_reanalysis_trajectory_month_comparison.csv')
     df = pd.read_csv(filepath, index_col=0)
     df['Date'] = [dt.datetime.strptime(t,'%Y-%m-%d') for t in df['Date']] # Convert date string to datetime
     return df

@@ -17,11 +17,13 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urljoin
 import os
 import re
+import netrc
+
+AUTH_HOST = 'https://urs.earthdata.nasa.gov'
+
 
 # overriding requests.Session.rebuild_auth to mantain headers when redirected
 class SessionWithHeaderRedirection(requests.Session):
- 
-    AUTH_HOST = 'urs.earthdata.nasa.gov'
  
     def __init__(self, username, password):
         super(SessionWithHeaderRedirection, self).__init__()
@@ -108,8 +110,8 @@ def nasa_crawler(catalog, filo=None, to_stdout=False):
     """
     
     # create session with the user credentials that will be used to authenticate access to the data    
-    username = 'apbarret'
-    password= 'T0talBollocks'
+    info = netrc.netrc()
+    username, account, password = info.authenticators(urlparse(AUTH_HOST).hostname)
     session = SessionWithHeaderRedirection(username, password)
 
     # Get the url of the file we wish to retrieve

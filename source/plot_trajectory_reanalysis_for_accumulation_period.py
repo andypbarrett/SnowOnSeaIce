@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import datetime as dt
+import os
 
 def rmse(df,x,y):                                                    
     return ( (df[x] - df[y])**2 ).mean()**0.5
@@ -77,7 +78,8 @@ def read_data():
                     5: 'Sum', 6: 'Sum', 7: 'Sum', 8: 'Acc',
                     9: 'Acc', 10: 'Acc', 11: 'Acc', 12: 'Acc'}
     
-    filepath = 'np_reanalysis_month_comparison.csv'
+    filepath = os.path.join('/home/apbarret/data/SnowOnSeaIce/reanalysis_timeseries/',
+                            'np_reanalysis_trajectory_month_comparison.csv')
     df = pd.read_csv(filepath, index_col=0)
     df['Date'] = [dt.datetime.strptime(t,'%Y-%m-%d') for t in df['Date']] # Convert date string to datetime
     df['Season'] = [which_season[m] for m in df['Date'].dt.month] # Determine season

@@ -106,7 +106,7 @@ def make_figure11(reanalysis, yang_annual, bogd_annual,
 
     handles, labels = ax.get_legend_handles_labels() # get handles and labels to plot ranges
     colors = {key: value.get_color() for key, value in zip(labels, handles)}
-    ax.legend(loc='lower right')
+    ax.legend(loc='lower left')
 
     ax.set_ylabel('Annual Precipitation (mm)')
 

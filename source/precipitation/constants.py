@@ -119,4 +119,13 @@ annual_total_filepath = {
                          'era5.single_level.PRECIP_STATS.annual.Nh50km.nc4'),
     }
 
+month_precip_stats = {
+    'ERA5': 'era5.single_level.PRECIP_STATS.??????.month.Nh50km.nc4',
+    'ERAI': 'era_interim.PRECIP_STATS.??????.month.Nh50km.nc',
+    'MERRA': 'MERRA.prod.PRECIP_STATS.assim.tavg1_2d_flx_Nx.??????.month.Nh50km.nc4',
+    'MERRA2': 'MERRA2.tavg1_2d_flx_Nx.PRECIP_STATS.??????.month.Nh50km.v2.nc4',
+    'JRA55': 'JRA55.fcst_phy2m.PRECIP_STATS.??????.month.Nh50km.nc',
+    'CFSR': '',
+    }
+
 maskFile = '/home/apbarret/src/utilities/data/arctic_mask.ocean.Nh50km.nc'

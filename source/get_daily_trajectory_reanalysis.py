@@ -56,10 +56,12 @@ def load_reanalysis(reanalysis, first_date, last_date):
 
 def load_trajectory(id):
     """Loads a trajectory for a given drifting station.  Adds Date and PRECTOT columns"""
-    dirpath = '/home/apbarret/data/NPSNOW/updated_position'
-    filepath = os.path.join(dirpath, f'position.daily.{id:02d}') 
+    #dirpath = '/home/apbarret/data/NPSNOW/updated_position'
+    #filepath = os.path.join(dirpath, f'position.daily.{id:02d}')
+    dirpath = '/home/apbarret/data/NPSNOW/my_combined_met'
+    filepath = os.path.join(dirpath, f'npmet_{id:02d}_combined.csv')
     trajectory = pd.read_csv(filepath, index_col=0, header=0, parse_dates=True)
-    return trajectory
+    return trajectory[['Longitude', 'Latitude']]
 
 
 def trajectory_time_index(trajectory):
@@ -111,7 +113,7 @@ def main(reanalysis, verbose=False):
     last_date  - last date to read YYYY-MM-DD
     """
 
-    stations = [22,24,25,26,28,29,30,31]
+    stations = [22,24,25,26,27,28,29,30,31]
     
     for id in stations:
 
@@ -121,7 +123,7 @@ def main(reanalysis, verbose=False):
         if verbose: print ('  Getting trajectory coordinates...')
         trajectory = load_trajectory(id)
         trajectory = trajectory.loc[REANALYSIS_FIRST_YEAR[reanalysis]:]
-        
+    
         # Read reanalysis cube
         if verbose: print ('  Reading reanalysis data...')
         reanalysis_df = load_reanalysis(reanalysis,
